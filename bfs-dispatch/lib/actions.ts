@@ -836,3 +836,131 @@ export async function getSalesAnalytics() {
     salesByDestState: Object.values(salesByDestState).sort((a, b) => b.total_profit - a.total_profit),
   };
 }
+
+export type AvailabilityStatus = 'disponible' | 'en_ruta' | 'maintenance';
+
+export interface TruckWithAvailability {
+  truck_id: number;
+  unit_number: string;
+  vehicle_type: string;
+  capacity: string;
+  operational_status: string;
+  carrier_id: number;
+  carrier_name: string;
+  record_status: string;
+  availability_status: AvailabilityStatus;
+  current_route: string | null;
+  current_load_status: string | null;
+}
+
+export interface TruckLoadHistory {
+  load_id: number;
+  load_number: string;
+  load_date: string;
+  origin: string;
+  destination: string;
+  load_status: string;
+  rate: number;
+  dispatch_fee: number;
+}
+
+export async function getTrucksWithAvailability() {
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("trucks_with_availability")
+    .select("*")
+    .eq("record_status", "Activo")
+    .order("unit_number");
+
+  if (error) throw error;
+  return data as TruckWithAvailability[];
+}
+
+export async function getTruckLoadHistory(truckId: number, days: number = 30): Promise<TruckLoadHistory[]> {
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("get_truck_load_history", {
+    p_truck_id: truckId,
+    p_days: days,
+  });
+
+  if (error) throw error;
+  return data as TruckLoadHistory[];
+}
+
+export async function getFleetOverview() {
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("trucks_with_availability")
+    .select("*")
+    .eq("record_status", "Activo")
+    .order("carrier_name, unit_number");
+
+  if (error) throw error;
+
+  const grouped: Record<string, TruckWithAvailability[]> = {};
+  (data as TruckWithAvailability[]).forEach((truck) => {
+    if (!grouped[truck.carrier_name]) {
+      grouped[truck.carrier_name] = [];
+    }
+    grouped[truck.carrier_name].push(truck);
+  });
+
+  return grouped;
+}
+
+export interface FleetAlert {
+  truck_id: number;
+  unit_number: string;
+  carrier_name: string;
+  alert_type: 'maintenance' | 'delay' | 'available';
+  message: string;
+  current_route?: string;
+}
+
+export async function getFleetAlerts(): Promise<FleetAlert[]> {
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("trucks_with_availability")
+    .select("*")
+    .eq("record_status", "Activo");
+
+  if (error) throw error;
+
+  const alerts: FleetAlert[] = [];
+  const now = new Date();
+
+  (data as TruckWithAvailability[]).forEach((truck) => {
+    if (truck.availability_status === 'maintenance') {
+      alerts.push({
+        truck_id: truck.truck_id,
+        unit_number: truck.unit_number,
+        carrier_name: truck.carrier_name,
+        alert_type: 'maintenance',
+        message: `${truck.unit_number} está en mantenimiento`,
+        current_route: truck.current_route || undefined,
+      });
+    } else if (truck.availability_status === 'en_ruta' && truck.current_load_status) {
+      const statusAge = now.getTime() - now.getTime();
+      if (statusAge > 48 * 60 * 60 * 1000) {
+        alerts.push({
+          truck_id: truck.truck_id,
+          unit_number: truck.unit_number,
+          carrier_name: truck.carrier_name,
+          alert_type: 'delay',
+          message: `${truck.unit_number} en ruta hace más de 48h`,
+          current_route: truck.current_route || undefined,
+        });
+      }
+    } else if (truck.availability_status === 'disponible') {
+      alerts.push({
+        truck_id: truck.truck_id,
+        unit_number: truck.unit_number,
+        carrier_name: truck.carrier_name,
+        alert_type: 'available',
+        message: `${truck.unit_number} disponible`,
+      });
+    }
+  });
+
+  return alerts;
+}
