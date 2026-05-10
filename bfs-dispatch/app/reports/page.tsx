@@ -78,8 +78,8 @@ export default function ReportsPage() {
         routes(miles),
         cargo_types(cargo_type_name)
       `)
-      .gte("created_at", startDate)
-      .lte("created_at", endDate);
+      .gte("booked_at", startDate)
+      .lte("booked_at", endDate);
 
     if (loadsError) {
       setError(loadsError.message);

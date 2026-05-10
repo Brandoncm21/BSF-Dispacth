@@ -964,3 +964,103 @@ export async function getFleetAlerts(): Promise<FleetAlert[]> {
 
   return alerts;
 }
+
+export type TruckStatus = 'active' | 'inactive' | 'maintenance' | 'in_route';
+
+export interface TruckWithSmartStatus {
+  truck_id: number;
+  unit_number: string;
+  truck_type: string;
+  carrier_id: number;
+  carrier_name: string;
+  operational_status: string;
+  current_load_id: number | null;
+  current_load_number: string | null;
+  smart_status: TruckStatus;
+  status_reason: string | null;
+}
+
+export async function getTrucksWithSmartStatus() {
+  const supabase = await getSupabaseServerClient();
+
+  const { data, error } = await supabase.rpc("get_trucks_with_smart_status");
+
+  if (error) throw error;
+  return data as TruckWithSmartStatus[];
+}
+
+export async function updateTruckStatus(truckId: number, operationalStatus: string) {
+  const supabase = await getSupabaseServerClient();
+
+  const { error } = await supabase
+    .from("trucks")
+    .update({ operational_status: operationalStatus })
+    .eq("truck_id", truckId);
+
+  if (error) throw error;
+}
+
+export async function createTruck(data: {
+  unit_number: string;
+  carrier_id: number;
+  truck_type: string;
+  capacity?: string;
+  operational_status?: string;
+}) {
+  const supabase = await getSupabaseServerClient();
+
+  const { data: newTruck, error } = await supabase
+    .from("trucks")
+    .insert({
+      unit_number: data.unit_number,
+      carrier_id: data.carrier_id,
+      vehicle_type: data.truck_type,
+      capacity: data.capacity || null,
+      operational_status: data.operational_status || "Activo",
+      status_id: 1,
+    })
+    .select("truck_id")
+    .single();
+
+  if (error) throw error;
+  return newTruck.truck_id;
+}
+
+export async function updateTruck(
+  truckId: number,
+  data: {
+    unit_number?: string;
+    carrier_id?: number;
+    truck_type?: string;
+    capacity?: string;
+    operational_status?: string;
+  }
+) {
+  const supabase = await getSupabaseServerClient();
+
+  const updates: Record<string, unknown> = {};
+  if (data.unit_number) updates.unit_number = data.unit_number;
+  if (data.carrier_id) updates.carrier_id = data.carrier_id;
+  if (data.truck_type) updates.vehicle_type = data.truck_type;
+  if (data.capacity) updates.capacity = data.capacity;
+  if (data.operational_status) updates.operational_status = data.operational_status;
+
+  const { error } = await supabase
+    .from("trucks")
+    .update(updates)
+    .eq("truck_id", truckId);
+
+  if (error) throw error;
+}
+
+export async function getCarriersSimple() {
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("carriers")
+    .select("carrier_id, first_name, last_name")
+    .eq("status_id", 1)
+    .order("first_name");
+
+  if (error) throw error;
+  return data;
+}
