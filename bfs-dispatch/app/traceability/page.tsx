@@ -1,18 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { createBrowserClient } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 import { TruckBadge } from "@/components/truck-badge";
 import { TruckTimeline } from "@/components/truck-timeline";
 import { FleetAlerts } from "@/components/fleet-alerts";
 import { getFleetOverview, getFleetAlerts, getTruckLoadHistory, TruckWithAvailability, FleetAlert, TruckLoadHistory } from "@/lib/actions";
 import { ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-const supabase = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 type FleetByCarrier = Record<string, TruckWithAvailability[]>;
 
