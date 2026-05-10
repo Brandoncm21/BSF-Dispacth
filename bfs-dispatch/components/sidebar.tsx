@@ -10,6 +10,7 @@ import {
   Package,
   BarChart3,
   LogOut,
+  MapPin,
 } from "lucide-react";
 
 const navItems = [
@@ -17,6 +18,7 @@ const navItems = [
   { href: "/loads", label: "Cargas", icon: Package },
   { href: "/carriers", label: "Carriers", icon: Truck },
   { href: "/drivers", label: "Drivers", icon: Users },
+  { href: "/traceability", label: "Trazabilidad", icon: MapPin },
   { href: "/reports", label: "Reportes", icon: BarChart3 },
 ];
 
@@ -30,10 +32,12 @@ export function Sidebar() {
   return (
     <aside className="flex h-screen w-64 flex-col border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
       <div className="flex h-16 items-center gap-2 border-b border-zinc-200 dark:border-zinc-800 px-6">
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-900 dark:bg-zinc-100">
-          <Truck className="h-4 w-4 text-white dark:text-zinc-900" />
-        </div>
-        <span className="text-lg font-bold">BestFreight</span>
+        <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-900 dark:bg-zinc-100">
+            <Truck className="h-4 w-4 text-white dark:text-zinc-900" />
+          </div>
+          <span className="text-lg font-bold">BestFreight</span>
+        </Link>
       </div>
 
       <nav className="flex-1 space-y-1 px-3 py-4">

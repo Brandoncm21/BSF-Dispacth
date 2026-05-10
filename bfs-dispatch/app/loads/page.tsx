@@ -19,6 +19,7 @@ import { z } from "zod";
 import { cn } from "@/lib/utils";
 import { RouteSelector } from "@/components/route-selector";
 import { CreatableSelect } from "@/components/creatable-select";
+import { TruckSelector } from "@/components/truck-selector";
 import {
   createCargoType,
   createSpecialRequirement,
@@ -661,17 +662,13 @@ export default function LoadsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="truck_id">Truck *</Label>
-              <select
-                id="truck_id"
-                value={form.truck_id}
-                onChange={(e) => setForm({ ...form, truck_id: e.target.value })}
-                className="flex w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-transparent px-3 py-2 text-sm"
-              >
-                <option value="">Seleccionar</option>
-                {filteredTrucks.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
-              </select>
-              {formErrors.truck_id && <p className="text-xs text-red-500">{formErrors.truck_id}</p>}
+              <TruckSelector
+                value={form.truck_id ? parseInt(form.truck_id) : null}
+                onChange={(id) => setForm({ ...form, truck_id: id?.toString() || "" })}
+                carrierId={form.carrier_id ? parseInt(form.carrier_id) : null}
+                label="Truck *"
+                error={formErrors.truck_id}
+              />
             </div>
 
             <div className="space-y-2 col-span-2">
