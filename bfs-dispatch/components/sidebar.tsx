@@ -15,8 +15,9 @@ import {
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/loads", label: "Cargas", icon: Package },
   { href: "/carriers", label: "Carriers", icon: Truck },
+  { href: "/dashboard/trucks", label: "Trucks", icon: Truck },
+  { href: "/loads", label: "Cargas", icon: Package },
   { href: "/drivers", label: "Drivers", icon: Users },
   { href: "/traceability", label: "Trazabilidad", icon: MapPin },
   { href: "/reports", label: "Reportes", icon: BarChart3 },
