@@ -1,7 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase";
+import { createBrowserClient } from "@supabase/ssr";
+
+const supabase = createBrowserClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +23,9 @@ import {
   LineChart,
   Line,
 } from "recharts";
+import { SalesAnalyticsDashboard } from "@/components/sales-analytics";
+
+type CarrierInfo = { first_name: string; last_name: string } | null;
 
 type LoadData = {
   load_id: number;
@@ -28,8 +36,9 @@ type LoadData = {
   dispatch_fee: number | null;
   load_status: string | null;
   paid_status: string | null;
-  carriers: { first_name: string; last_name: string } | null;
-  drivers: { first_name: string; last_name: string } | null;
+  created_at?: string;
+  carriers: CarrierInfo;
+  drivers: CarrierInfo;
   routes: { miles: number | null } | null;
   cargo_types: { cargo_type_name: string } | null;
 };
@@ -57,12 +66,13 @@ export default function ReportsPage() {
   async function fetchData() {
     setLoading(true);
     const startDate = `${monthFilter}-01`;
-    const endDate = new Date(new Date(startDate).getFullYear(), new Date(startDate).getMonth() + 1, 0).toISOString().slice(0, 10);
+    const lastDay = new Date(new Date(startDate).getFullYear(), new Date(startDate).getMonth() + 1, 0).getDate();
+    const endDate = `${monthFilter}-${String(lastDay).padStart(2, "0")}`;
 
     const { data: loadsData, error: loadsError } = await supabase
       .from("loads")
       .select(`
-        load_id, load_number, load_data, load_weight, rate, dispatch_fee, load_status, paid_status,
+        load_id, load_number, load_data, load_weight, rate, dispatch_fee, load_status, paid_status, created_at,
         carriers(first_name, last_name),
         drivers(first_name, last_name),
         routes(miles),
@@ -74,9 +84,9 @@ export default function ReportsPage() {
     if (loadsError) {
       setError(loadsError.message);
     } else {
-      setLoads(loadsData as LoadData[]);
-      processWeeklyData(loadsData as LoadData[]);
-      processCarrierRPM(loadsData as LoadData[]);
+      setLoads(loadsData as unknown as LoadData[]);
+      processWeeklyData(loadsData as unknown as LoadData[]);
+      processCarrierRPM(loadsData as unknown as LoadData[]);
     }
     setLoading(false);
   }
@@ -84,7 +94,9 @@ export default function ReportsPage() {
   function processWeeklyData(loadsData: LoadData[]) {
     const weeks: Record<string, { loads: number; revenue: number }> = {};
     loadsData.forEach((load) => {
-      const week = `Semana ${Math.ceil((new Date().getDate()) / 7)}`;
+      if (!load.created_at) return;
+      const weekNum = Math.ceil((new Date(load.created_at).getDate()) / 7);
+      const week = `Semana ${weekNum}`;
       if (!weeks[week]) weeks[week] = { loads: 0, revenue: 0 };
       weeks[week].loads += 1;
       weeks[week].revenue += load.rate || 0;
@@ -176,6 +188,17 @@ export default function ReportsPage() {
           </button>
         </Alert>
       )}
+
+      {/* Sales Analytics Dashboard */}
+      <div className="mb-8">
+        <h2 className="text-xl font-semibold mb-4">Dashboard de Ventas</h2>
+        <SalesAnalyticsDashboard />
+      </div>
+
+      {/* Monthly Load Reports */}
+      <div className="mb-6">
+        <h2 className="text-xl font-semibold mb-4">Reporte Mensual de Cargas</h2>
+      </div>
 
       {loading ? (
         <div className="flex justify-center py-12">
