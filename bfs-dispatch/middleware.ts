@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 
 const protectedPaths = ["/dashboard", "/loads", "/carriers", "/drivers", "/reports"];
 
@@ -13,20 +11,18 @@ export async function middleware(request: Request) {
     return NextResponse.next();
   }
 
-  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      flowType: "pkce",
-    },
-  });
-
-  const cookieHeader = request.headers.get("cookie") || "";
-  const supabaseCookies = cookieHeader
-    .split(";")
-    .reduce((acc, cookie) => {
-      const [key, value] = cookie.trim().split("=");
-      if (key) acc[key] = value;
-      return acc;
-    }, {} as Record<string, string>);
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+      },
+    }
+  );
 
   const {
     data: { session },

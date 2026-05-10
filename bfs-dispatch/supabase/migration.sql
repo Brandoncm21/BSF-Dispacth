@@ -229,15 +229,73 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- ============================================================
 CREATE OR REPLACE FUNCTION generate_load_number()
 RETURNS TRIGGER AS $$
+DECLARE
+  next_seq INTEGER;
 BEGIN
   IF NEW.load_number IS NULL THEN
-    NEW.load_number := 'LD-' || TO_CHAR(NOW(), 'YYYY') || '-' || LPAD(COALESCE((SELECT MAX(CAST(SPLIT_PART(load_number, '-', 3) AS INTEGER)) FROM loads WHERE load_number LIKE 'LD-' || TO_CHAR(NOW(), 'YYYY') || '-%'), 0) + 1, 4, '0');
+    SELECT COALESCE(MAX(CAST(SPLIT_PART(load_number, '-', 3) AS INTEGER)), 0) + 1
+    INTO next_seq
+    FROM loads
+    WHERE load_number LIKE 'LD-' || TO_CHAR(NOW(), 'YYYY') || '-%';
+
+    NEW.load_number := 'LD-' || TO_CHAR(NOW(), 'YYYY') || '-' || LPAD(next_seq::text, 4, '0');
   END IF;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS set_load_number ON loads;
 CREATE TRIGGER set_load_number
   BEFORE INSERT ON loads
   FOR EACH ROW
   EXECUTE FUNCTION generate_load_number();
+
+-- ============================================================
+-- 11. VIEW: Sales Performance Analytics
+-- ============================================================
+CREATE OR REPLACE VIEW v_sales_performance AS
+SELECT 
+  s.sales_id,
+  s.sale_date,
+  s.total_amount,
+  s.total_cost,
+  s.total_profit,
+  s.profit_pct,
+  COALESCE(b.first_name || ' ' || b.last_name, 'Sin Broker') AS broker_name,
+  COALESCE(e.first_name || ' ' || e.last_name, 'Sin Dispatcher') AS dispatcher_name,
+  COALESCE(orig_state.state_name, 'N/A') AS origin_state_name,
+  COALESCE(dest_state.state_name, 'N/A') AS destination_state_name,
+  l.load_number,
+  l.rate,
+  l.dispatch_fee,
+  s.status_id
+FROM sales s
+LEFT JOIN brokers b ON s.broker_id = b.broker_id
+LEFT JOIN employees e ON s.employee_id = e.employee_id
+LEFT JOIN sales_details sd ON s.sales_id = sd.sales_id
+LEFT JOIN loads l ON sd.load_id = l.load_id
+LEFT JOIN addresses orig_addr ON l.origin_address_id = orig_addr.address_id
+LEFT JOIN addresses dest_addr ON l.destination_address_id = dest_addr.address_id
+LEFT JOIN states orig_state ON orig_addr.state_id = orig_state.state_id
+LEFT JOIN states dest_state ON dest_addr.state_id = dest_state.state_id;
+
+-- ============================================================
+-- 12. SYNC SEQUENCES
+-- ============================================================
+SELECT setval(pg_get_serial_sequence('carriers', 'carrier_id'), coalesce(max(carrier_id), 1)) FROM carriers;
+SELECT setval(pg_get_serial_sequence('trucks', 'truck_id'), coalesce(max(truck_id), 1)) FROM trucks;
+SELECT setval(pg_get_serial_sequence('drivers', 'driver_id'), coalesce(max(driver_id), 1)) FROM drivers;
+SELECT setval(pg_get_serial_sequence('loads', 'load_id'), coalesce(max(load_id), 1)) FROM loads;
+SELECT setval(pg_get_serial_sequence('addresses', 'address_id'), coalesce(max(address_id), 1)) FROM addresses;
+SELECT setval(pg_get_serial_sequence('routes', 'route_id'), coalesce(max(route_id), 1)) FROM routes;
+SELECT setval(pg_get_serial_sequence('states', 'state_id'), coalesce(max(state_id), 1)) FROM states;
+SELECT setval(pg_get_serial_sequence('cities', 'city_id'), coalesce(max(city_id), 1)) FROM cities;
+SELECT setval(pg_get_serial_sequence('streets', 'street_id'), coalesce(max(street_id), 1)) FROM streets;
+SELECT setval(pg_get_serial_sequence('brokers', 'broker_id'), coalesce(max(broker_id), 1)) FROM brokers;
+SELECT setval(pg_get_serial_sequence('cargo_types', 'cargo_type_id'), coalesce(max(cargo_type_id), 1)) FROM cargo_types;
+SELECT setval(pg_get_serial_sequence('special_requirements', 'special_requirements_id'), coalesce(max(special_requirements_id), 1)) FROM special_requirements;
+SELECT setval(pg_get_serial_sequence('sales', 'sales_id'), coalesce(max(sales_id), 1)) FROM sales;
+SELECT setval(pg_get_serial_sequence('sales_details', 'sales_details_id'), coalesce(max(sales_details_id), 1)) FROM sales_details;
+SELECT setval(pg_get_serial_sequence('billing', 'invoice_id'), coalesce(max(invoice_id), 1)) FROM billing;
+SELECT setval(pg_get_serial_sequence('employees', 'employee_id'), coalesce(max(employee_id), 1)) FROM employees;
+SELECT setval(pg_get_serial_sequence('roles', 'role_id'), coalesce(max(role_id), 1)) FROM roles;
