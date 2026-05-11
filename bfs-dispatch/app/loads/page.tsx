@@ -20,6 +20,8 @@ import { cn } from "@/lib/utils";
 import { RouteSelector } from "@/components/route-selector";
 import { CreatableSelect } from "@/components/creatable-select";
 import { TruckSelector } from "@/components/truck-selector";
+import { PaginationControls } from "@/components/pagination-controls";
+import { TableSkeleton } from "@/components/table-skeleton";
 import {
   createCargoType,
   createSpecialRequirement,
@@ -70,12 +72,12 @@ type Load = {
   cargo_type_id: number | null;
   picked_up_at: string | null;
   delivered_at: string | null;
-  carriers: { first_name: string; last_name: string } | null;
-  drivers: { first_name: string; last_name: string } | null;
-  trucks: { unit_number: string } | null;
-  routes: { estimated_time: string | null; miles: number | null } | null;
-  cargo_types: { cargo_type_name: string } | null;
-  record_status: { status_name: string } | null;
+  carrier_name: string | null;
+  driver_name: string | null;
+  unit_number: string | null;
+  miles: number | null;
+  cargo_type_name: string | null;
+  total_count?: number;
 };
 
 type LoadForm = {
@@ -126,10 +128,13 @@ const documentSchema = z.object({
 type SelectOption = { id: number; label: string };
 
 export default function LoadsPage() {
+  const PAGE_SIZE = 16;
   const [loads, setLoads] = useState<Load[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingLoad, setEditingLoad] = useState<Load | null>(null);
   const [form, setForm] = useState<LoadForm>(emptyForm);
@@ -164,32 +169,30 @@ export default function LoadsPage() {
   useEffect(() => {
     fetchLoads();
     fetchSelectOptions();
-  }, [search, statusFilter]);
+  }, [search, statusFilter, page]);
 
   async function fetchLoads() {
     setLoading(true);
-    let query = supabase
-      .from("loads")
-      .select(`
-        *, carriers(first_name, last_name), drivers(first_name, last_name),
-        trucks(unit_number), routes(estimated_time, miles),
-        cargo_types(cargo_type_name), record_status:status_id(status_name)
-      `);
+    const offset = (page - 1) * PAGE_SIZE;
 
-    if (search) {
-      query = query.or(
-        `load_number.ilike.%${search}%,load_data.ilike.%${search}%`
-      );
+    const { data, error } = await supabase.rpc("search_loads", {
+      p_search: search || null,
+      p_status: statusFilter !== "all" ? statusFilter : null,
+      p_limit: PAGE_SIZE,
+      p_offset: offset,
+    });
+
+    if (error) {
+      setError(error.message);
+      setLoads([]);
+      setTotalItems(0);
+    } else if (data && data.length > 0) {
+      setLoads(data as Load[]);
+      setTotalItems(data[0].total_count || 0);
+    } else {
+      setLoads([]);
+      setTotalItems(0);
     }
-
-    if (statusFilter !== "all") {
-      query = query.eq("load_status", statusFilter);
-    }
-
-    const { data, error } = await query.order("load_id", { ascending: false });
-
-    if (error) setError(error.message);
-    else setLoads(data as Load[]);
     setLoading(false);
   }
 
@@ -561,10 +564,9 @@ export default function LoadsPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
-        </div>
+        <TableSkeleton rows={16} columns={12} />
       ) : (
+        <>
         <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-zinc-100 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800">
@@ -590,25 +592,25 @@ export default function LoadsPage() {
                     {load.load_number || `#${load.load_id}`}
                   </td>
                   <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                    {load.carriers ? `${load.carriers.first_name} ${load.carriers.last_name}` : "—"}
+                    {load.carrier_name || "—"}
                   </td>
                   <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                    {load.drivers ? `${load.drivers.first_name} ${load.drivers.last_name}` : "—"}
+                    {load.driver_name || "—"}
                   </td>
                   <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                    {load.trucks?.unit_number || "—"}
+                    {load.unit_number || "—"}
                   </td>
                   <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                    {load.cargo_types?.cargo_type_name || "—"}
+                    {load.cargo_type_name || "—"}
                   </td>
                   <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                    {load.routes?.miles || "—"}
+                    {load.miles || "—"}
                   </td>
                   <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
                     {load.rate ? `$${load.rate.toLocaleString()}` : "—"}
                   </td>
                   <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-50">
-                    {dollarPerMile(load.rate, load.routes?.miles)}
+                    {dollarPerMile(load.rate, load.miles)}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
@@ -661,6 +663,13 @@ export default function LoadsPage() {
             </tbody>
           </table>
         </div>
+        <PaginationControls
+          currentPage={page}
+          totalItems={totalItems}
+          pageSize={PAGE_SIZE}
+          onPageChange={setPage}
+        />
+        </>
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
