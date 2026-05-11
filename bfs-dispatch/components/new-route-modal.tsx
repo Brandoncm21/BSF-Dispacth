@@ -173,17 +173,19 @@ export function NewRouteModal({ open, onOpenChange, onRouteCreated }: NewRouteMo
   }
 
   function canProceedToDest(): boolean {
-    return (
-      (origin.stateId !== null && origin.cityId !== null && (origin.streetId !== null || origin.customStreetName.trim() !== "")) &&
-      (origin.customCityName.trim() !== "" || origin.cityInputMode === "select")
-    );
+    const hasCity = origin.cityInputMode === "custom"
+      ? origin.customCityName.trim() !== ""
+      : origin.cityId !== null;
+    const hasStreet = origin.streetId !== null || origin.customStreetName.trim() !== "";
+    return origin.stateId !== null && hasCity && hasStreet;
   }
 
   function canProceedToConfirm(): boolean {
-    return (
-      (destination.stateId !== null && destination.cityId !== null && (destination.streetId !== null || destination.customStreetName.trim() !== "")) &&
-      (destination.customCityName.trim() !== "" || destination.cityInputMode === "select")
-    );
+    const hasCity = destination.cityInputMode === "custom"
+      ? destination.customCityName.trim() !== ""
+      : destination.cityId !== null;
+    const hasStreet = destination.streetId !== null || destination.customStreetName.trim() !== "";
+    return destination.stateId !== null && hasCity && hasStreet;
   }
 
   function canCreateRoute(): boolean {

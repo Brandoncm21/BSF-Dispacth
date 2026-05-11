@@ -11,6 +11,7 @@ import {
   BarChart3,
   LogOut,
   MapPin,
+  UserCircle,
 } from "lucide-react";
 
 const navItems = [
@@ -19,6 +20,7 @@ const navItems = [
   { href: "/dashboard/trucks", label: "Trucks", icon: Truck },
   { href: "/loads", label: "Cargas", icon: Package },
   { href: "/drivers", label: "Drivers", icon: Users },
+  { href: "/brokers", label: "Brokers", icon: UserCircle },
   { href: "/traceability", label: "Trazabilidad", icon: MapPin },
   { href: "/reports", label: "Reportes", icon: BarChart3 },
 ];
