@@ -49,6 +49,8 @@ const loadSchema = z.object({
   load_status: z.string().default("pending"),
   paid_status: z.string().default("unpaid"),
   status_id: z.coerce.number().default(1),
+  picked_up_at: z.string().optional().or(z.literal("")),
+  delivered_at: z.string().optional().or(z.literal("")),
 });
 
 type Load = {
@@ -66,6 +68,8 @@ type Load = {
   driver_id: number | null;
   route_id: number | null;
   cargo_type_id: number | null;
+  picked_up_at: string | null;
+  delivered_at: string | null;
   carriers: { first_name: string; last_name: string } | null;
   drivers: { first_name: string; last_name: string } | null;
   trucks: { unit_number: string } | null;
@@ -89,6 +93,8 @@ type LoadForm = {
   load_status: string;
   paid_status: string;
   status_id: number;
+  picked_up_at: string;
+  delivered_at: string;
 };
 
 const emptyForm: LoadForm = {
@@ -106,6 +112,8 @@ const emptyForm: LoadForm = {
   load_status: "pending",
   paid_status: "unpaid",
   status_id: 1,
+  picked_up_at: "",
+  delivered_at: "",
 };
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -230,6 +238,16 @@ export default function LoadsPage() {
 
   function openEdit(load: Load) {
     setEditingLoad(load);
+    const formatDateTime = (ts: string | null) => {
+      if (!ts) return "";
+      const d = new Date(ts);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      const hh = String(d.getHours()).padStart(2, "0");
+      const min = String(d.getMinutes()).padStart(2, "0");
+      return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+    };
     setForm({
       load_data: load.load_data || "",
       load_weight: load.load_weight?.toString() || "",
@@ -247,6 +265,8 @@ export default function LoadsPage() {
       load_status: load.load_status || "pending",
       paid_status: load.paid_status || "unpaid",
       status_id: 1,
+      picked_up_at: formatDateTime(load.picked_up_at),
+      delivered_at: formatDateTime(load.delivered_at),
     });
     setFormErrors({});
     setDialogOpen(true);
@@ -316,6 +336,8 @@ export default function LoadsPage() {
         load_status: result.data.load_status,
         paid_status: result.data.paid_status,
         status_id: result.data.status_id,
+        picked_up_at: result.data.picked_up_at || null,
+        delivered_at: result.data.delivered_at || null,
       };
 
       if (dispatcherId) {
@@ -472,6 +494,16 @@ export default function LoadsPage() {
     return `$${(rate / miles).toFixed(2)}`;
   };
 
+  const formatTimestamp = (ts: string | null) => {
+    if (!ts) return "—";
+    const d = new Date(ts);
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    const hh = String(d.getHours()).padStart(2, "0");
+    const min = String(d.getMinutes()).padStart(2, "0");
+    return `${mm}/${dd} ${hh}:${min}`;
+  };
+
   const statusColors: Record<string, string> = {
     pending: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
     booked: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
@@ -546,6 +578,8 @@ export default function LoadsPage() {
                 <th className="text-left px-4 py-3 font-medium text-zinc-600 dark:text-zinc-400">Rate</th>
                 <th className="text-left px-4 py-3 font-medium text-zinc-600 dark:text-zinc-400">$/Mile</th>
                 <th className="text-left px-4 py-3 font-medium text-zinc-600 dark:text-zinc-400">Status</th>
+                <th className="text-left px-4 py-3 font-medium text-zinc-600 dark:text-zinc-400">Pickup</th>
+                <th className="text-left px-4 py-3 font-medium text-zinc-600 dark:text-zinc-400">Delivery</th>
                 <th className="text-right px-4 py-3 font-medium text-zinc-600 dark:text-zinc-400">Acciones</th>
               </tr>
             </thead>
@@ -596,6 +630,12 @@ export default function LoadsPage() {
                       )}
                     </div>
                   </td>
+                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 font-mono text-xs">
+                    {formatTimestamp(load.picked_up_at)}
+                  </td>
+                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 font-mono text-xs">
+                    {formatTimestamp(load.delivered_at)}
+                  </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end gap-1">
                       <Button variant="ghost" size="icon" onClick={() => openDocsModal(load.load_id)} title="Ver documentos">
@@ -613,7 +653,7 @@ export default function LoadsPage() {
               ))}
               {loads.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="text-center py-12 text-zinc-500">
+                  <td colSpan={12} className="text-center py-12 text-zinc-500">
                     No se encontraron cargas
                   </td>
                 </tr>
@@ -678,6 +718,32 @@ export default function LoadsPage() {
                 label="Ruta *"
                 error={formErrors.route_id}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="picked_up_at">Fecha/Hora Recogida</Label>
+              <Input
+                id="picked_up_at"
+                type="datetime-local"
+                value={form.picked_up_at}
+                onChange={(e) => setForm({ ...form, picked_up_at: e.target.value })}
+              />
+              {formErrors.picked_up_at && <p className="text-xs text-red-500">{formErrors.picked_up_at}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="delivered_at">Fecha/Hora Entrega</Label>
+              <Input
+                id="delivered_at"
+                type="datetime-local"
+                value={form.delivered_at}
+                onChange={(e) => setForm({ ...form, delivered_at: e.target.value })}
+              />
+              {formErrors.delivered_at && <p className="text-xs text-red-500">{formErrors.delivered_at}</p>}
+            </div>
+
+            <div className="col-span-2 -mt-2">
+              <p className="text-xs text-zinc-400 dark:text-zinc-500">Zona horaria: Costa Rica (UTC-6)</p>
             </div>
 
             <CreatableSelect

@@ -1064,3 +1064,73 @@ export async function getCarriersSimple() {
   if (error) throw error;
   return data;
 }
+
+export interface Broker {
+  broker_id: number;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  phone_number: string | null;
+  status_id: number;
+}
+
+export async function getBrokers() {
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("brokers")
+    .select("*")
+    .eq("status_id", 1)
+    .order("first_name");
+
+  if (error) throw error;
+  return data as Broker[];
+}
+
+export async function createBroker(data: {
+  first_name: string;
+  last_name: string;
+  email?: string;
+  phone_number?: string;
+}) {
+  const supabase = await getSupabaseServerClient();
+
+  const { data: newBroker, error } = await supabase
+    .from("brokers")
+    .insert({
+      first_name: data.first_name,
+      last_name: data.last_name,
+      email: data.email || null,
+      phone_number: data.phone_number || null,
+      status_id: 1,
+    })
+    .select("broker_id")
+    .single();
+
+  if (error) throw error;
+  return newBroker.broker_id;
+}
+
+export async function updateBroker(
+  brokerId: number,
+  data: {
+    first_name?: string;
+    last_name?: string;
+    email?: string;
+    phone_number?: string;
+  }
+) {
+  const supabase = await getSupabaseServerClient();
+
+  const updates: Record<string, unknown> = {};
+  if (data.first_name) updates.first_name = data.first_name;
+  if (data.last_name) updates.last_name = data.last_name;
+  if (data.email !== undefined) updates.email = data.email;
+  if (data.phone_number !== undefined) updates.phone_number = data.phone_number;
+
+  const { error } = await supabase
+    .from("brokers")
+    .update(updates)
+    .eq("broker_id", brokerId);
+
+  if (error) throw error;
+}
