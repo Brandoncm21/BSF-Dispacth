@@ -2,7 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { logout } from "@/lib/auth-actions";
+import { supabase } from "@/lib/supabase";
+import { useUserRole } from "@/hooks/use-has-access";
+import {
+  getAccessibleModules,
+  MODULE_ROUTE_MAP,
+  ROLE_PERMISSIONS,
+  type RoleType,
+} from "@/config/roles";
 import {
   LayoutDashboard,
   Truck,
@@ -12,24 +21,92 @@ import {
   LogOut,
   MapPin,
   UserCircle,
+  UserCog,
 } from "lucide-react";
 
-const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/carriers", label: "Carriers", icon: Truck },
-  { href: "/dashboard/trucks", label: "Trucks", icon: Truck },
-  { href: "/loads", label: "Cargas", icon: Package },
-  { href: "/drivers", label: "Drivers", icon: Users },
-  { href: "/brokers", label: "Brokers", icon: UserCircle },
-  { href: "/traceability", label: "Trazabilidad", icon: MapPin },
-  { href: "/reports", label: "Reportes", icon: BarChart3 },
-];
+const iconMap: Record<string, typeof LayoutDashboard> = {
+  dashboard: LayoutDashboard,
+  loads: Package,
+  trucks: Truck,
+  drivers: Users,
+  carriers: Truck,
+  brokers: UserCircle,
+  traceability: MapPin,
+  reports: BarChart3,
+  sales: BarChart3,
+  human_resources: UserCog,
+};
+
+const labelMap: Record<string, string> = {
+  dashboard: "Dashboard",
+  loads: "Cargas",
+  trucks: "Trucks",
+  drivers: "Drivers",
+  carriers: "Carriers",
+  brokers: "Brokers",
+  traceability: "Trazabilidad",
+  reports: "Reportes",
+  sales: "Ventas",
+  human_resources: "Staff",
+};
+
+interface NavItem {
+  href: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+}
 
 export function Sidebar() {
   const pathname = usePathname();
 
+  if (pathname === "/" || pathname?.startsWith("/login")) {
+    return null;
+  }
+
+  const { role: userRole, loading } = useUserRole();
+  const [navItems, setNavItems] = useState<NavItem[]>([]);
+
+  useEffect(() => {
+    if (!userRole) {
+      setNavItems([]);
+      return;
+    }
+
+    const modules = getAccessibleModules(userRole);
+    const items: NavItem[] = modules
+      .filter((m) => MODULE_ROUTE_MAP[m])
+      .map((m) => ({
+        href: MODULE_ROUTE_MAP[m],
+        label: labelMap[m] ?? m,
+        icon: iconMap[m] ?? LayoutDashboard,
+      }));
+
+    setNavItems(items);
+  }, [userRole]);
+
   async function handleLogout() {
     await logout();
+  }
+
+  if (loading) {
+    return (
+      <aside className="flex h-screen w-64 flex-col border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
+        <div className="flex h-16 items-center gap-2 border-b border-zinc-200 dark:border-zinc-800 px-6">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-900 dark:bg-zinc-100">
+            <Truck className="h-4 w-4 text-white dark:text-zinc-900" />
+          </div>
+          <span className="text-lg font-bold">BestFreight</span>
+        </div>
+        <div className="flex-1 px-6 py-4">
+          <div className="animate-pulse space-y-3">
+            <div className="h-8 bg-zinc-200 dark:bg-zinc-800 rounded-md" />
+            <div className="h-8 bg-zinc-200 dark:bg-zinc-800 rounded-md" />
+            <div className="h-8 bg-zinc-200 dark:bg-zinc-800 rounded-md" />
+            <div className="h-8 bg-zinc-200 dark:bg-zinc-800 rounded-md" />
+          </div>
+        </div>
+      </aside>
+    );
   }
 
   return (
@@ -42,6 +119,14 @@ export function Sidebar() {
           <span className="text-lg font-bold">BestFreight</span>
         </Link>
       </div>
+
+      {userRole && (
+        <div className="px-6 py-2 border-b border-zinc-200 dark:border-zinc-800">
+          <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
+            {ROLE_PERMISSIONS[userRole]?.label ?? "Usuario"}
+          </span>
+        </div>
+      )}
 
       <nav className="flex-1 space-y-1 px-3 py-4">
         {navItems.map((item) => {

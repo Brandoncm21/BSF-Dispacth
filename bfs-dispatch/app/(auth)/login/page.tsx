@@ -1,17 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { login } from "@/lib/auth-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Truck } from "lucide-react";
+import { Loader2, Truck, ShieldAlert } from "lucide-react";
 
-export default function LoginPage() {
+function LoginForm() {
+  const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const denied = searchParams.get("denied");
+    const authError = searchParams.get("error");
+    if (denied === "1") {
+      setError("Acceso Denegado: No tienes permisos para acceder a ese módulo.");
+    } else if (authError === "No role assigned") {
+      setError("Tu cuenta no tiene un rol asignado. Contacta al administrador.");
+    }
+  }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -44,6 +56,7 @@ export default function LoginPage() {
         <CardContent>
           {error && (
             <Alert variant="destructive" className="mb-4">
+              <ShieldAlert className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
@@ -89,5 +102,13 @@ export default function LoginPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }

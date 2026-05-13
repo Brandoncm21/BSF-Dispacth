@@ -22,6 +22,8 @@ import {
 import { Label } from "@/components/ui/label";
 import { Search, Plus, Edit2, Trash2, Loader2, X } from "lucide-react";
 import { z } from "zod";
+import { PaginationControls } from "@/components/pagination-controls";
+import { TableSkeleton } from "@/components/table-skeleton";
 
 const driverSchema = z.object({
   first_name: z.string().min(1, "Nombre es requerido"),
@@ -83,17 +85,22 @@ export default function DriversPage() {
   const [formLoading, setFormLoading] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const perPage = 16;
 
   useEffect(() => {
     fetchDrivers();
     fetchCarriers();
-  }, [search]);
+  }, [search, page]);
 
   async function fetchDrivers() {
     setLoading(true);
+    const offset = (page - 1) * perPage;
+
     let query = supabase
       .from("drivers")
-      .select("*, carriers(first_name, last_name), record_status:status_id(status_name)");
+      .select("*, carriers(first_name, last_name), record_status:status_id(status_name)", { count: "exact" });
 
     if (search) {
       query = query.or(
@@ -101,12 +108,13 @@ export default function DriversPage() {
       );
     }
 
-    const { data, error } = await query;
+    const { data, count, error } = await query.range(offset, offset + perPage - 1);
 
     if (error) {
       setError(error.message);
     } else {
       setDrivers(data as Driver[]);
+      setTotal(count || 0);
     }
     setLoading(false);
   }
@@ -223,18 +231,20 @@ export default function DriversPage() {
           <Input
             placeholder="Buscar por nombre o CDL..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             className="pl-10"
           />
         </div>
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
-        </div>
+        <TableSkeleton rows={16} columns={7} />
       ) : (
-        <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 overflow-hidden">
+        <>
+          <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-zinc-100 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800">
               <tr>
@@ -306,6 +316,8 @@ export default function DriversPage() {
             </tbody>
           </table>
         </div>
+        <PaginationControls currentPage={page} totalItems={total} pageSize={perPage} onPageChange={setPage} />
+        </>
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
