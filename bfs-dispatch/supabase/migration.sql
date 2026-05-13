@@ -225,30 +225,24 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ============================================================
--- 10. HELPER FUNCTION: Generate load number
+-- 10. SEQUENCE + TRIGGER: Atomic load number generation
 -- ============================================================
+CREATE SEQUENCE IF NOT EXISTS loads_seq START 1;
+
 CREATE OR REPLACE FUNCTION generate_load_number()
 RETURNS TRIGGER AS $$
-DECLARE
-  next_seq INTEGER;
 BEGIN
-  IF NEW.load_number IS NULL THEN
-    SELECT COALESCE(MAX(CAST(SPLIT_PART(load_number, '-', 3) AS INTEGER)), 0) + 1
-    INTO next_seq
-    FROM loads
-    WHERE load_number LIKE 'LD-' || TO_CHAR(NOW(), 'YYYY') || '-%';
-
-    NEW.load_number := 'LD-' || TO_CHAR(NOW(), 'YYYY') || '-' || LPAD(next_seq::text, 4, '0');
-  END IF;
-  RETURN NEW;
+    IF NEW.load_number IS NULL THEN
+        NEW.load_number := 'LD-' || EXTRACT(YEAR FROM NOW()) || '-' || LPAD(nextval('loads_seq')::TEXT, 4, '0');
+    END IF;
+    RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS set_load_number ON loads;
 CREATE TRIGGER set_load_number
-  BEFORE INSERT ON loads
-  FOR EACH ROW
-  EXECUTE FUNCTION generate_load_number();
+    BEFORE INSERT ON loads
+    FOR EACH ROW EXECUTE FUNCTION generate_load_number();
 
 -- ============================================================
 -- 11. VIEW: Sales Performance Analytics
