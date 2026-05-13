@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, DollarSign, TrendingUp, Truck } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Package, DollarSign, TrendingUp, Truck, ShieldAlert } from "lucide-react";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -27,11 +28,21 @@ async function getKPIs() {
   return { totalLoads: totalLoads || 0, totalRevenue, totalProfit, avgRPM, totalCarriers };
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage(props: { searchParams: Promise<{ denied?: string }> }) {
   const kpis = await getKPIs();
+  const searchParams = await props.searchParams;
+  const isDenied = searchParams.denied === "1";
 
   return (
     <div className="p-8">
+      {isDenied && (
+        <Alert variant="destructive" className="mb-6">
+          <ShieldAlert className="h-4 w-4" />
+          <AlertDescription>
+            Acceso Denegado: No tienes permisos para acceder a ese módulo.
+          </AlertDescription>
+        </Alert>
+      )}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">Dashboard</h1>
         <p className="text-zinc-500 dark:text-zinc-400 mt-1">

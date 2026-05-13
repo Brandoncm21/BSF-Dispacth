@@ -139,14 +139,29 @@ CREATE TABLE routes (
 
 CREATE TABLE loads (
     load_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    load_data VARCHAR(255),
-    load_weight NUMERIC,
+    load_number VARCHAR(20) UNIQUE,
+    load_data VARCHAR(500),
+    load_weight NUMERIC(10,2),
+    rate NUMERIC(12,2) DEFAULT 0,
+    dispatch_fee NUMERIC(12,2) DEFAULT 0,
+    dispatch_fee_pct NUMERIC(5,2),
+    factoring BOOLEAN DEFAULT FALSE,
+    load_status VARCHAR(20) DEFAULT 'pending'
+        CHECK (load_status IN ('pending','booked','picked_up','delivered','paid')),
+    paid_status VARCHAR(20) DEFAULT 'unpaid'
+        CHECK (paid_status IN ('unpaid','partial','paid')),
+    picked_up_at TIMESTAMPTZ,
+    delivered_at TIMESTAMPTZ,
+    booked_at TIMESTAMPTZ,
+    paid_at TIMESTAMPTZ,
     carrier_id INTEGER REFERENCES carriers(carrier_id),
     truck_id INTEGER REFERENCES trucks(truck_id),
     driver_id INTEGER REFERENCES drivers(driver_id),
-    dispatcher_id INTEGER REFERENCES employees(employee_id),
     route_id INTEGER REFERENCES routes(route_id),
-    status_id INTEGER REFERENCES record_status(status_id),
+    origin_address_id INTEGER REFERENCES addresses(address_id),
+    destination_address_id INTEGER REFERENCES addresses(address_id),
+    dispatcher_id INTEGER REFERENCES employees(employee_id),
+    status_id INTEGER REFERENCES record_status(status_id) DEFAULT 1,
     cargo_type_id INTEGER REFERENCES cargo_types(cargo_type_id),
     special_requirements_id INTEGER REFERENCES special_requirements(special_requirements_id)
 );
@@ -267,10 +282,10 @@ INSERT INTO drivers (first_name, last_name, phone_number, license_type, carrier_
     ('Sofía', 'Chaves', '8888-8888', 'Tipo D3', 2, 1),
     ('Diego', 'Mora', '8888-9999', 'Tipo E', 3, 1);
 
-INSERT INTO loads (load_data, load_weight, carrier_id, truck_id, driver_id, dispatcher_id, route_id, status_id, cargo_type_id, special_requirements_id) VALUES
-    ('Carga alimentos', 5000, 1, 1, 1, 1, 1, 1, 1, 1),
-    ('Carga electrónica', 3000, 2, 2, 2, 2, 2, 1, 2, 2),
-    ('Carga pesada', 8000, 3, 3, 3, 3, 3, 1, 3, 3);
+INSERT INTO loads (load_data, load_weight, rate, dispatch_fee, factoring, load_status, paid_status, carrier_id, truck_id, driver_id, dispatcher_id, route_id, status_id, cargo_type_id, special_requirements_id) VALUES
+    ('Carga alimentos', 5000, 1000, 200, FALSE, 'delivered', 'paid', 1, 1, 1, 1, 1, 1, 1, 1),
+    ('Carga electrónica', 3000, 1500, 300, FALSE, 'delivered', 'paid', 2, 2, 2, 2, 2, 1, 2, 2),
+    ('Carga pesada', 8000, 2000, 400, FALSE, 'delivered', 'paid', 3, 3, 3, 3, 3, 1, 3, 3);
 
 INSERT INTO sales (total_amount, total_cost, profit_pct, total_profit, sale_date, broker_id, employee_id, status_id) VALUES
     (10000, 7000, 30, 3000, '2025-07-01', 1, 1, 1),

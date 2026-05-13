@@ -9,7 +9,6 @@ const supabase = createBrowserClient(
 );
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -23,6 +22,8 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Search, Plus, Edit2, Trash2, Loader2, X } from "lucide-react";
 import { z } from "zod";
+import { PaginationControls } from "@/components/pagination-controls";
+import { TableSkeleton } from "@/components/table-skeleton";
 
 const carrierSchema = z.object({
   first_name: z.string().min(1, "Nombre es requerido"),
@@ -96,7 +97,7 @@ export default function CarriersPage() {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
-  const perPage = 25;
+  const perPage = 16;
 
   useEffect(() => {
     fetchCarriers();
@@ -268,9 +269,7 @@ export default function CarriersPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
-        </div>
+        <TableSkeleton rows={16} columns={7} />
       ) : (
         <>
           <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 overflow-hidden">
@@ -351,32 +350,7 @@ export default function CarriersPage() {
               </tbody>
             </table>
           </div>
-
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4">
-              <p className="text-sm text-zinc-500">
-                Mostrando {((page - 1) * perPage) + 1} - {Math.min(page * perPage, total)} de {total}
-              </p>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page === 1}
-                  onClick={() => setPage(page - 1)}
-                >
-                  Anterior
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page === totalPages}
-                  onClick={() => setPage(page + 1)}
-                >
-                  Siguiente
-                </Button>
-              </div>
-            </div>
-          )}
+          <PaginationControls currentPage={page} totalItems={total} pageSize={perPage} onPageChange={setPage} />
         </>
       )}
 
