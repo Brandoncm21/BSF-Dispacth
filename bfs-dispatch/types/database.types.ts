@@ -222,6 +222,7 @@ export type Database = {
           status_id: number | null;
           cargo_type_id: number | null;
           special_requirements_id: number | null;
+          created_at: string | null;
         };
         Insert: {
           load_id?: number;
@@ -248,6 +249,7 @@ export type Database = {
           status_id?: number | null;
           cargo_type_id?: number | null;
           special_requirements_id?: number | null;
+          created_at?: string | null;
         };
         Update: {
           load_id?: number;
@@ -274,6 +276,7 @@ export type Database = {
           status_id?: number | null;
           cargo_type_id?: number | null;
           special_requirements_id?: number | null;
+          created_at?: string | null;
         };
       };
 
@@ -484,6 +487,7 @@ export type Database = {
           current_load_status: string | null;
           current_load_id: number | null;
           current_load_number: string | null;
+          current_load_created_at: string | null;
         };
       };
     };

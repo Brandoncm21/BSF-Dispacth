@@ -611,25 +611,13 @@ export async function createSpecialRequirement(description: string) {
 export async function getOrCreateCity(cityName: string, stateId: number) {
   const supabase = await getSupabaseServerClient();
 
-  const { data: existing } = await supabase
-    .from("cities")
-    .select("city_id")
-    .eq("city_name", cityName)
-    .eq("state_id", stateId)
-    .single();
-
-  if (existing) {
-    return existing.city_id;
-  }
-
-  const { data, error } = await supabase
-    .from("cities")
-    .insert({ city_name: cityName, state_id: stateId })
-    .select("city_id")
-    .single();
+  const { data, error } = await supabase.rpc("get_or_create_city", {
+    p_city_name: cityName,
+    p_state_id: stateId,
+  });
 
   if (error) throw error;
-  return data.city_id;
+  return data;
 }
 
 export async function searchStreets(query: string, cityId?: number, stateId?: number) {
@@ -690,86 +678,18 @@ export async function createRoute(
 ) {
   const supabase = await getSupabaseServerClient();
 
-  const originStreetId = await getOrCreateStreet(originStreet, originCityId, originStateId);
+  const { data, error } = await supabase.rpc("create_route_full", {
+    p_origin_street: originStreet,
+    p_origin_city_id: originCityId,
+    p_origin_state_id: originStateId,
+    p_dest_street: destStreet,
+    p_dest_city_id: destCityId,
+    p_dest_state_id: destStateId,
+    p_miles: miles,
+  });
 
-  const { data: originAddress, error: originAddrError } = await supabase
-    .from("addresses")
-    .select("address_id")
-    .eq("street_id", originStreetId)
-    .eq("state_id", originStateId)
-    .single();
-
-  let originAddressId: number;
-
-  if (!originAddress) {
-    const { data: newOrigin, error: newOriginError } = await supabase
-      .from("addresses")
-      .insert({
-        street_id: originStreetId,
-        state_id: originStateId,
-        address_description: originStreet,
-      })
-      .select("address_id")
-      .single();
-
-    if (newOriginError) throw newOriginError;
-    originAddressId = newOrigin.address_id;
-  } else {
-    originAddressId = originAddress.address_id;
-  }
-
-  const destStreetId = await getOrCreateStreet(destStreet, destCityId, destStateId);
-
-  const { data: destAddress, error: destAddrError } = await supabase
-    .from("addresses")
-    .select("address_id")
-    .eq("street_id", destStreetId)
-    .eq("state_id", destStateId)
-    .single();
-
-  let destAddressId: number;
-
-  if (!destAddress) {
-    const { data: newDest, error: newDestError } = await supabase
-      .from("addresses")
-      .insert({
-        street_id: destStreetId,
-        state_id: destStateId,
-        address_description: destStreet,
-      })
-      .select("address_id")
-      .single();
-
-    if (newDestError) throw newDestError;
-    destAddressId = newDest.address_id;
-  } else {
-    destAddressId = destAddress.address_id;
-  }
-
-  const { data: existingRoute } = await supabase
-    .from("routes")
-    .select("route_id")
-    .eq("origin_address_id", originAddressId)
-    .eq("destination_address_id", destAddressId)
-    .single();
-
-  if (existingRoute) {
-    return existingRoute.route_id;
-  }
-
-  const { data: newRoute, error: routeError } = await supabase
-    .from("routes")
-    .insert({
-      origin_address_id: originAddressId,
-      destination_address_id: destAddressId,
-      miles: miles,
-      status_id: 1,
-    })
-    .select("route_id")
-    .single();
-
-  if (routeError) throw routeError;
-  return newRoute.route_id;
+  if (error) throw error;
+  return data;
 }
 
 export type LoadDocument = {
@@ -862,7 +782,7 @@ export async function deleteLoadDocument(documentId: number, filePath: string) {
     .remove([filePath]);
 
   if (storageError) {
-    console.error("Error deleting file from storage:", storageError);
+    throw new Error(`Error eliminando archivo de storage: ${storageError.message}`);
   }
 
   const { error: dbError } = await supabase
@@ -873,12 +793,23 @@ export async function deleteLoadDocument(documentId: number, filePath: string) {
   if (dbError) throw dbError;
 }
 
-export async function getSalesAnalytics() {
+export async function getSalesAnalytics(fromDate?: string, toDate?: string) {
   const supabase = await getSupabaseServerClient();
 
-  const { data, error } = await supabase
+  const defaultFrom = new Date();
+  defaultFrom.setFullYear(defaultFrom.getFullYear() - 12);
+  const effectiveFrom = fromDate || defaultFrom.toISOString().slice(0, 10);
+
+  let query = supabase
     .from("v_sales_performance")
-    .select("sale_date, total_profit, total_amount, broker_name, origin_state_name, destination_state_name, load_number");
+    .select("sale_date, total_profit, total_amount, broker_name, origin_state_name, destination_state_name, load_number")
+    .gte("sale_date", effectiveFrom);
+
+  if (toDate) {
+    query = query.lte("sale_date", toDate);
+  }
+
+  const { data, error } = await query;
 
   if (error) throw error;
 
@@ -935,15 +866,18 @@ export type AvailabilityStatus = 'disponible' | 'en_ruta' | 'maintenance';
 export interface TruckWithAvailability {
   truck_id: number;
   unit_number: string;
-  vehicle_type: string;
-  capacity: string;
-  operational_status: string;
-  carrier_id: number;
+  vehicle_type: string | null;
+  capacity: string | null;
+  operational_status: string | null;
+  carrier_id: number | null;
   carrier_name: string;
-  record_status: string;
+  record_status: string | null;
   availability_status: AvailabilityStatus;
   current_route: string | null;
   current_load_status: string | null;
+  current_load_id: number | null;
+  current_load_number: string | null;
+  current_load_created_at: string | null;
 }
 
 export interface TruckLoadHistory {
@@ -1033,7 +967,9 @@ export async function getFleetAlerts(): Promise<FleetAlert[]> {
         current_route: truck.current_route || undefined,
       });
     } else if (truck.availability_status === 'en_ruta' && truck.current_load_status) {
-      const statusAge = now.getTime() - now.getTime();
+      const statusAge = truck.current_load_created_at
+        ? now.getTime() - new Date(truck.current_load_created_at).getTime()
+        : 0;
       if (statusAge > 48 * 60 * 60 * 1000) {
         alerts.push({
           truck_id: truck.truck_id,
