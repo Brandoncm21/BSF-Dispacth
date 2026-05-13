@@ -1,0 +1,198 @@
+"use server";
+
+import { z } from "zod";
+import { LOAD_STATUS, PAID_STATUS } from "@/lib/constants";
+import { getSupabaseServerClient } from "./core";
+
+const createLoadSchema = z.object({
+  carrier_id: z.coerce.number().min(1, "Carrier es requerido"),
+  truck_id: z.coerce.number().min(1, "Truck es requerido"),
+  driver_id: z.coerce.number().min(1, "Driver es requerido"),
+  route_id: z.coerce.number().min(1, "Ruta es requerida"),
+  cargo_type_id: z.preprocess(
+    (val) => val === "" || val === null ? null : Number(val),
+    z.number().int().positive().nullable().optional()
+  ),
+  special_requirements_id: z.preprocess(
+    (val) => val === "" || val === null ? null : Number(val),
+    z.number().int().positive().nullable().optional()
+  ),
+  rate: z.coerce.number().min(0, "Rate es requerido"),
+  dispatch_fee_pct: z.coerce.number().min(0).max(100).optional().nullable(),
+  load_weight: z.coerce.number().optional().nullable(),
+  load_data: z.string().optional().nullable(),
+  factoring: z.boolean().default(false),
+  load_status: z.string().default(LOAD_STATUS.PENDING),
+  paid_status: z.string().default(PAID_STATUS.UNPAID),
+  picked_up_at: z.string().optional().nullable(),
+  delivered_at: z.string().optional().nullable(),
+});
+
+export async function createLoad(formData: z.infer<typeof createLoadSchema>) {
+  const supabase = await getSupabaseServerClient();
+
+  const result = createLoadSchema.safeParse(formData);
+  if (!result.success) {
+    const errors: Record<string, string> = {};
+    result.error.issues.forEach((issue) => {
+      const key = String(issue.path[0]);
+      errors[key] = issue.message;
+    });
+    return { error: "Validation failed", errors };
+  }
+
+  const data = result.data;
+
+  const { data: { user } } = await supabase.auth.getUser();
+
+  let dispatcherId: number | null = null;
+  if (user) {
+    const { data: employee } = await supabase
+      .from("employees")
+      .select("employee_id")
+      .eq("auth_user_id", user.id)
+      .maybeSingle();
+    if (employee) {
+      dispatcherId = employee.employee_id;
+    }
+  }
+
+  const dispatchFee = data.rate * ((data.dispatch_fee_pct || 0) / 100);
+
+  const insertData: Record<string, unknown> = {
+    carrier_id: data.carrier_id,
+    truck_id: data.truck_id,
+    driver_id: data.driver_id,
+    route_id: data.route_id,
+    cargo_type_id: data.cargo_type_id || null,
+    special_requirements_id: data.special_requirements_id || null,
+    rate: data.rate,
+    dispatch_fee: dispatchFee,
+    dispatch_fee_pct: data.dispatch_fee_pct,
+    load_weight: data.load_weight || null,
+    load_data: data.load_data || null,
+    factoring: data.factoring,
+    load_status: data.load_status,
+    paid_status: data.paid_status,
+    status_id: 1,
+    picked_up_at: data.picked_up_at || null,
+    delivered_at: data.delivered_at || null,
+  };
+
+  if (dispatcherId) {
+    insertData.dispatcher_id = dispatcherId;
+  }
+
+  const { data: newLoad, error: loadError } = await supabase
+    .from("loads")
+    .insert(insertData)
+    .select("load_id")
+    .single();
+
+  if (loadError) {
+    return { error: loadError.message };
+  }
+
+  return { success: true, load_id: newLoad.load_id };
+}
+
+const updateLoadSchema = z.object({
+  carrier_id: z.coerce.number().min(1, "Carrier es requerido").optional(),
+  truck_id: z.coerce.number().min(1, "Truck es requerido").optional(),
+  driver_id: z.coerce.number().min(1, "Driver es requerido").optional(),
+  route_id: z.coerce.number().min(1, "Ruta es requerida").optional(),
+  cargo_type_id: z.preprocess(
+    (val) => val === "" || val === null ? null : Number(val),
+    z.number().int().positive().nullable().optional()
+  ),
+  special_requirements_id: z.preprocess(
+    (val) => val === "" || val === null ? null : Number(val),
+    z.number().int().positive().nullable().optional()
+  ),
+  rate: z.coerce.number().min(0, "Rate es requerido").optional(),
+  dispatch_fee_pct: z.coerce.number().min(0).max(100).optional().nullable(),
+  load_weight: z.coerce.number().optional().nullable(),
+  load_data: z.string().optional().nullable(),
+  factoring: z.boolean().optional(),
+  load_status: z.string().optional(),
+  paid_status: z.string().optional(),
+  picked_up_at: z.string().optional().nullable(),
+  delivered_at: z.string().optional().nullable(),
+});
+
+export async function updateLoad(loadId: number, formData: z.infer<typeof updateLoadSchema>) {
+  const supabase = await getSupabaseServerClient();
+
+  const result = updateLoadSchema.safeParse(formData);
+  if (!result.success) {
+    const errors: Record<string, string> = {};
+    result.error.issues.forEach((issue) => {
+      const key = String(issue.path[0]);
+      errors[key] = issue.message;
+    });
+    return { error: "Validation failed", errors };
+  }
+
+  const data = result.data;
+
+  const updateData: Record<string, unknown> = {};
+  if (data.carrier_id !== undefined) updateData.carrier_id = data.carrier_id;
+  if (data.truck_id !== undefined) updateData.truck_id = data.truck_id;
+  if (data.driver_id !== undefined) updateData.driver_id = data.driver_id;
+  if (data.route_id !== undefined) updateData.route_id = data.route_id;
+  if (data.cargo_type_id !== undefined) updateData.cargo_type_id = data.cargo_type_id || null;
+  if (data.special_requirements_id !== undefined) updateData.special_requirements_id = data.special_requirements_id || null;
+  if (data.rate !== undefined) updateData.rate = data.rate;
+  if (data.dispatch_fee_pct !== undefined) updateData.dispatch_fee_pct = data.dispatch_fee_pct;
+  if (data.load_weight !== undefined) updateData.load_weight = data.load_weight || null;
+  if (data.load_data !== undefined) updateData.load_data = data.load_data || null;
+  if (data.factoring !== undefined) updateData.factoring = data.factoring;
+  if (data.load_status !== undefined) updateData.load_status = data.load_status;
+  if (data.paid_status !== undefined) updateData.paid_status = data.paid_status;
+  if (data.picked_up_at !== undefined) updateData.picked_up_at = data.picked_up_at || null;
+  if (data.delivered_at !== undefined) updateData.delivered_at = data.delivered_at || null;
+
+  if (data.rate !== undefined || data.dispatch_fee_pct !== undefined) {
+    const { data: existing } = await supabase
+      .from("loads")
+      .select("rate, dispatch_fee_pct")
+      .eq("load_id", loadId)
+      .single();
+
+    const effectiveRate = data.rate ?? existing?.rate ?? 0;
+    const effectivePct = data.dispatch_fee_pct ?? existing?.dispatch_fee_pct ?? 0;
+    updateData.dispatch_fee = effectiveRate * (effectivePct / 100);
+  }
+
+  const { error } = await supabase
+    .from("loads")
+    .update(updateData)
+    .eq("load_id", loadId);
+
+  if (error) return { error: error.message };
+  return { success: true };
+}
+
+export async function deleteLoad(loadId: number) {
+  const supabase = await getSupabaseServerClient();
+
+  const { error } = await supabase
+    .from("loads")
+    .update({ status_id: 2 })
+    .eq("load_id", loadId);
+
+  if (error) return { error: error.message };
+  return { success: true };
+}
+
+export async function updateLoadStatus(loadId: number, status: string) {
+  const supabase = await getSupabaseServerClient();
+
+  const { error } = await supabase
+    .from("loads")
+    .update({ load_status: status })
+    .eq("load_id", loadId);
+
+  if (error) return { error: error.message };
+  return { success: true };
+}
