@@ -1,17 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Plus, Edit2, Search, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { BrokerFormSheet } from "@/components/broker-form-sheet";
-import { Broker } from "@/lib/actions";
+import { searchBrokers as searchBrokersAction, Broker } from "@/lib/actions";
 import { PaginationControls } from "@/components/pagination-controls";
 import { TableSkeleton } from "@/components/table-skeleton";
-import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
-
-const supabase = createSupabaseBrowserClient();
 
 export default function BrokersPage() {
   const PAGE_SIZE = 16;
@@ -25,42 +22,23 @@ export default function BrokersPage() {
   const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchBrokers();
-  }, [search, statusFilter, page]);
-
-  async function fetchBrokers() {
+  const fetchBrokers = useCallback(async () => {
     setLoading(true);
-    const offset = (page - 1) * PAGE_SIZE;
-
-    let query = supabase
-      .from("brokers")
-      .select("*", { count: "exact" });
-
-    if (statusFilter !== "all") {
-      query = query.eq("status_id", parseInt(statusFilter));
-    }
-
-    if (search) {
-      query = query.or(
-        `first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%`
-      );
-    }
-
-    const { data, count, error } = await query
-      .order("first_name")
-      .range(offset, offset + PAGE_SIZE - 1);
-
-    if (error) {
-      setError(error.message);
+    try {
+      const result = await searchBrokersAction(search, statusFilter, page, PAGE_SIZE);
+      setBrokers(result.data);
+      setTotal(result.count);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error al cargar brokers");
       setBrokers([]);
       setTotal(0);
-    } else if (data) {
-      setBrokers(data as Broker[]);
-      setTotal(count || 0);
     }
     setLoading(false);
-  }
+  }, [search, statusFilter, page]);
+
+  useEffect(() => {
+    fetchBrokers();
+  }, [fetchBrokers]);
 
   function handleAdd() {
     setEditingBroker(null);

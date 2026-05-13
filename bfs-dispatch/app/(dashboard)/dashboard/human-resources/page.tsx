@@ -11,6 +11,7 @@ import { Search, Loader2, X, UserCog, Power, Shield } from "lucide-react";
 import { PaginationControls } from "@/components/pagination-controls";
 import { TableSkeleton } from "@/components/table-skeleton";
 import { useHasAccess } from "@/hooks/use-has-access";
+import { getRoles } from "@/lib/actions";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 const supabase = createSupabaseBrowserClient();
@@ -83,15 +84,10 @@ export default function HumanResourcesPage() {
   }
 
   async function fetchRoles() {
-    const { data, error } = await supabase
-      .from("roles")
-      .select("role_id, role_name, role_type")
-      .eq("status_id", 1)
-      .order("role_name");
-
-    if (!error && data) {
+    try {
+      const data = await getRoles();
       setRoles(data as Role[]);
-    }
+    } catch { /* ignore */ }
   }
 
   async function handleToggleStatus(employeeId: number) {

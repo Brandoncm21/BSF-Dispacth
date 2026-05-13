@@ -2,6 +2,36 @@
 
 import { getSupabaseServerClient } from "./core";
 
+export async function searchCarriers(
+  search: string,
+  statusFilter: string,
+  page: number,
+  pageSize: number
+) {
+  const supabase = await getSupabaseServerClient();
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  let query = supabase
+    .from("carriers")
+    .select("*, record_status:status_id(status_name)", { count: "exact" });
+
+  if (search) {
+    query = query.or(
+      `first_name.ilike.%${search}%,last_name.ilike.%${search}%,motor_carrier_id.ilike.%${search}%`
+    );
+  }
+
+  if (statusFilter !== "all") {
+    query = query.eq("status_id", parseInt(statusFilter));
+  }
+
+  const { data, count, error } = await query.range(from, to);
+
+  if (error) throw error;
+  return { data: data || [], count: count || 0 };
+}
+
 export async function getStates() {
   const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase
@@ -47,6 +77,48 @@ export async function searchAddresses(query: string, cityId?: number) {
   const { data, error } = await request;
   if (error) throw error;
   return data;
+}
+
+export async function searchDrivers(
+  search: string,
+  page: number,
+  pageSize: number
+) {
+  const supabase = await getSupabaseServerClient();
+  const offset = (page - 1) * pageSize;
+
+  let query = supabase
+    .from("drivers")
+    .select("*, carriers(first_name, last_name), record_status:status_id(status_name)", { count: "exact" });
+
+  if (search) {
+    query = query.or(
+      `first_name.ilike.%${search}%,last_name.ilike.%${search}%,cdl_number.ilike.%${search}%`
+    );
+  }
+
+  const { data, count, error } = await query.range(offset, offset + pageSize - 1);
+
+  if (error) throw error;
+  return { data: data || [], count: count || 0 };
+}
+
+export async function createCarrier(data: Record<string, unknown>) {
+  const supabase = await getSupabaseServerClient();
+  const { error } = await supabase.from("carriers").insert([data]);
+  if (error) throw error;
+}
+
+export async function updateCarrier(carrierId: number, data: Record<string, unknown>) {
+  const supabase = await getSupabaseServerClient();
+  const { error } = await supabase.from("carriers").update(data).eq("carrier_id", carrierId);
+  if (error) throw error;
+}
+
+export async function softDeleteCarrier(carrierId: number) {
+  const supabase = await getSupabaseServerClient();
+  const { error } = await supabase.from("carriers").update({ status_id: 2 }).eq("carrier_id", carrierId);
+  if (error) throw error;
 }
 
 export async function getActiveCarriers() {
@@ -97,6 +169,18 @@ export async function getActiveBrokers() {
   return data;
 }
 
+export async function getRoles() {
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("roles")
+    .select("role_id, role_name, role_type")
+    .eq("status_id", 1)
+    .order("role_name");
+
+  if (error) throw error;
+  return data;
+}
+
 export async function getActiveCargoTypes() {
   const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase
@@ -131,6 +215,24 @@ export async function getCarriersSimple() {
 
   if (error) throw error;
   return data;
+}
+
+export async function createDriver(data: Record<string, unknown>) {
+  const supabase = await getSupabaseServerClient();
+  const { error } = await supabase.from("drivers").insert([data]);
+  if (error) throw error;
+}
+
+export async function updateDriver(driverId: number, data: Record<string, unknown>) {
+  const supabase = await getSupabaseServerClient();
+  const { error } = await supabase.from("drivers").update(data).eq("driver_id", driverId);
+  if (error) throw error;
+}
+
+export async function softDeleteDriver(driverId: number) {
+  const supabase = await getSupabaseServerClient();
+  const { error } = await supabase.from("drivers").update({ status_id: 2 }).eq("driver_id", driverId);
+  if (error) throw error;
 }
 
 export async function createCargoType(name: string) {

@@ -1,10 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
-import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
-
-const supabase = createSupabaseBrowserClient();
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -21,6 +18,7 @@ import { Search, Plus, Edit2, Trash2, Loader2, X } from "lucide-react";
 import { z } from "zod";
 import { PaginationControls } from "@/components/pagination-controls";
 import { TableSkeleton } from "@/components/table-skeleton";
+import { searchDrivers, createDriver, updateDriver, softDeleteDriver, getActiveCarriers } from "@/lib/actions";
 
 const driverSchema = z.object({
   first_name: z.string().min(1, "Nombre es requerido"),
@@ -86,44 +84,29 @@ export default function DriversPage() {
   const [total, setTotal] = useState(0);
   const perPage = 16;
 
+  const fetchDrivers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const result = await searchDrivers(search, page, perPage);
+      setDrivers(result.data as Driver[]);
+      setTotal(result.count);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error al cargar drivers");
+    }
+    setLoading(false);
+  }, [search, page]);
+
+  const fetchCarriers = useCallback(async () => {
+    try {
+      const data = await getActiveCarriers();
+      setCarriers(data);
+    } catch { /* ignore */ }
+  }, []);
+
   useEffect(() => {
     fetchDrivers();
     fetchCarriers();
-  }, [search, page]);
-
-  async function fetchDrivers() {
-    setLoading(true);
-    const offset = (page - 1) * perPage;
-
-    let query = supabase
-      .from("drivers")
-      .select("*, carriers(first_name, last_name), record_status:status_id(status_name)", { count: "exact" });
-
-    if (search) {
-      query = query.or(
-        `first_name.ilike.%${search}%,last_name.ilike.%${search}%,cdl_number.ilike.%${search}%`
-      );
-    }
-
-    const { data, count, error } = await query.range(offset, offset + perPage - 1);
-
-    if (error) {
-      setError(error.message);
-    } else {
-      setDrivers(data as Driver[]);
-      setTotal(count || 0);
-    }
-    setLoading(false);
-  }
-
-  async function fetchCarriers() {
-    const { data } = await supabase
-      .from("carriers")
-      .select("carrier_id, first_name, last_name")
-      .eq("status_id", 1);
-
-    if (data) setCarriers(data);
-  }
+  }, [fetchDrivers, fetchCarriers]);
 
   function openCreate() {
     setEditingDriver(null);
@@ -163,25 +146,16 @@ export default function DriversPage() {
       return;
     }
 
-    if (editingDriver) {
-      const { error } = await supabase
-        .from("drivers")
-        .update(result.data)
-        .eq("driver_id", editingDriver.driver_id);
-
-      if (error) setError(error.message);
-      else {
-        setDialogOpen(false);
-        fetchDrivers();
+    try {
+      if (editingDriver) {
+        await updateDriver(editingDriver.driver_id, result.data);
+      } else {
+        await createDriver(result.data);
       }
-    } else {
-      const { error } = await supabase.from("drivers").insert([result.data]);
-
-      if (error) setError(error.message);
-      else {
-        setDialogOpen(false);
-        fetchDrivers();
-      }
+      setDialogOpen(false);
+      fetchDrivers();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error al guardar driver");
     }
     setFormLoading(false);
   }
@@ -189,13 +163,12 @@ export default function DriversPage() {
   async function handleDelete(driverId: number) {
     if (!confirm("¿Estás seguro de eliminar este driver?")) return;
 
-    const { error } = await supabase
-      .from("drivers")
-      .update({ status_id: 2 })
-      .eq("driver_id", driverId);
-
-    if (error) setError(error.message);
-    else fetchDrivers();
+    try {
+      await softDeleteDriver(driverId);
+      fetchDrivers();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error al eliminar driver");
+    }
   }
 
   return (

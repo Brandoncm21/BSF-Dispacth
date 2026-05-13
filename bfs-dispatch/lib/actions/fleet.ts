@@ -159,6 +159,31 @@ export async function getTrucksWithSmartStatus() {
   return data as TruckWithSmartStatus[];
 }
 
+export async function searchTrucks(
+  search: string,
+  page: number,
+  pageSize: number
+) {
+  const supabase = await getSupabaseServerClient();
+  const offset = (page - 1) * pageSize;
+
+  let query = supabase
+    .from("trucks")
+    .select("*, carriers(first_name, last_name), record_status:status_id(status_name)", { count: "exact" })
+    .eq("status_id", 1);
+
+  if (search) {
+    query = query.or(
+      `unit_number.ilike.%${search}%,carriers.first_name.ilike.%${search}%,carriers.last_name.ilike.%${search}%`
+    );
+  }
+
+  const { data, count, error } = await query.range(offset, offset + pageSize - 1);
+
+  if (error) throw error;
+  return { data: data || [], count: count || 0 };
+}
+
 export async function updateTruckStatus(truckId: number, operationalStatus: string) {
   const supabase = await getSupabaseServerClient();
 
@@ -242,6 +267,37 @@ export async function getBrokers() {
 
   if (error) throw error;
   return data as Broker[];
+}
+
+export async function searchBrokers(
+  search: string,
+  statusFilter: string,
+  page: number,
+  pageSize: number
+) {
+  const supabase = await getSupabaseServerClient();
+  const offset = (page - 1) * pageSize;
+
+  let query = supabase
+    .from("brokers")
+    .select("*", { count: "exact" });
+
+  if (statusFilter !== "all") {
+    query = query.eq("status_id", parseInt(statusFilter));
+  }
+
+  if (search) {
+    query = query.or(
+      `first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%`
+    );
+  }
+
+  const { data, count, error } = await query
+    .order("first_name")
+    .range(offset, offset + pageSize - 1);
+
+  if (error) throw error;
+  return { data: data as Broker[], count: count || 0 };
 }
 
 export async function createBroker(data: {

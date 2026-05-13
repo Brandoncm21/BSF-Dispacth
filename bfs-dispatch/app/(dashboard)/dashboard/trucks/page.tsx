@@ -1,18 +1,45 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Plus, Edit2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TruckStatusBadge } from "@/components/truck-status-badge";
 import { TruckFormSheet } from "@/components/truck-form-sheet";
-import { TruckWithSmartStatus } from "@/lib/actions";
+import { searchTrucks as searchTrucksAction, TruckWithSmartStatus } from "@/lib/actions";
 import { cn } from "@/lib/utils";
 import { PaginationControls } from "@/components/pagination-controls";
 import { TableSkeleton } from "@/components/table-skeleton";
-import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 
-const supabase = createSupabaseBrowserClient();
+function mapTruckData(raw: any): TruckWithSmartStatus {
+  const opStatus = raw.operational_status?.toLowerCase() || "";
+  let smartStatus: "active" | "inactive" | "maintenance" | "in_route" = "inactive";
+  let statusReason = "Sin asignar";
+
+  if (opStatus === "activo" || opStatus === "active" || opStatus === "available") {
+    smartStatus = "active";
+    statusReason = "Disponible";
+  } else if (opStatus.includes("mantenimiento") || opStatus.includes("maintenance")) {
+    smartStatus = "maintenance";
+    statusReason = "En mantenimiento";
+  } else if (opStatus.includes("ruta") || opStatus.includes("route") || opStatus === "in_route") {
+    smartStatus = "in_route";
+    statusReason = "En ruta activa";
+  }
+
+  return {
+    truck_id: raw.truck_id,
+    unit_number: raw.unit_number,
+    truck_type: raw.vehicle_type || "N/A",
+    operational_status: raw.operational_status,
+    carrier_id: raw.carrier_id,
+    carrier_name: raw.carriers ? `${raw.carriers.first_name} ${raw.carriers.last_name}` : "N/A",
+    smart_status: smartStatus,
+    status_reason: statusReason,
+    current_load_id: null,
+    current_load_number: null,
+  };
+}
 
 export default function TrucksPage() {
   const PAGE_SIZE = 16;
@@ -24,66 +51,22 @@ export default function TrucksPage() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
 
-  useEffect(() => {
-    fetchTrucks();
-  }, [search, page]);
-
-  async function fetchTrucks() {
+  const fetchTrucks = useCallback(async () => {
     setLoading(true);
-    const offset = (page - 1) * PAGE_SIZE;
-
-    let query = supabase
-      .from("trucks")
-      .select("*, carriers(first_name, last_name), record_status:status_id(status_name)", { count: "exact" })
-      .eq("status_id", 1);
-
-    if (search) {
-      query = query.or(
-        `unit_number.ilike.%${search}%,carriers.first_name.ilike.%${search}%,carriers.last_name.ilike.%${search}%`
-      );
-    }
-
-    const { data, count, error } = await query.range(offset, offset + PAGE_SIZE - 1);
-
-    if (error) {
-      console.error("Error fetching trucks:", error);
-    } else if (data) {
-      const mapped = data.map((t) => {
-        const opStatus = t.operational_status?.toLowerCase() || "";
-        let smartStatus: "active" | "inactive" | "maintenance" | "in_route" = "inactive";
-        let statusReason = "Sin asignar";
-
-        if (opStatus === "activo" || opStatus === "active" || opStatus === "available") {
-          smartStatus = "active";
-          statusReason = "Disponible";
-        } else if (opStatus.includes("mantenimiento") || opStatus.includes("maintenance")) {
-          smartStatus = "maintenance";
-          statusReason = "En mantenimiento";
-        } else if (opStatus.includes("ruta") || opStatus.includes("route") || opStatus === "in_route") {
-          smartStatus = "in_route";
-          statusReason = "En ruta activa";
-        }
-
-        return {
-          truck_id: t.truck_id,
-          unit_number: t.unit_number,
-          truck_type: t.vehicle_type || "N/A",
-          capacity: t.capacity,
-          operational_status: t.operational_status,
-          carrier_id: t.carrier_id,
-          status_id: t.status_id,
-          carrier_name: t.carriers ? `${t.carriers.first_name} ${t.carriers.last_name}` : "N/A",
-          smart_status: smartStatus,
-          status_reason: statusReason,
-          current_load_id: null,
-          current_load_number: null,
-        };
-      }) as TruckWithSmartStatus[];
-      setTrucks(mapped);
-      setTotal(count || 0);
+    try {
+      const result = await searchTrucksAction(search, page, PAGE_SIZE);
+      setTrucks(result.data.map(mapTruckData));
+      setTotal(result.count);
+    } catch {
+      setTrucks([]);
+      setTotal(0);
     }
     setLoading(false);
-  }
+  }, [search, page]);
+
+  useEffect(() => {
+    fetchTrucks();
+  }, [fetchTrucks]);
 
   function handleAdd() {
     setEditingTruck(null);

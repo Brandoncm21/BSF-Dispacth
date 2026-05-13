@@ -1,10 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
-import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
-
-const supabase = createSupabaseBrowserClient();
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -21,6 +18,7 @@ import { Search, Plus, Edit2, Trash2, Loader2, X } from "lucide-react";
 import { z } from "zod";
 import { PaginationControls } from "@/components/pagination-controls";
 import { TableSkeleton } from "@/components/table-skeleton";
+import { searchCarriers, createCarrier, updateCarrier, softDeleteCarrier } from "@/lib/actions";
 
 const carrierSchema = z.object({
   first_name: z.string().min(1, "Nombre es requerido"),
@@ -96,38 +94,21 @@ export default function CarriersPage() {
   const [total, setTotal] = useState(0);
   const perPage = 16;
 
-  useEffect(() => {
-    fetchCarriers();
-  }, [search, statusFilter, page]);
-
-  async function fetchCarriers() {
+  const fetchCarriers = useCallback(async () => {
     setLoading(true);
-    let query = supabase
-      .from("carriers")
-      .select("*, record_status:status_id(status_name)", { count: "exact" });
-
-    if (search) {
-      query = query.or(
-        `first_name.ilike.%${search}%,last_name.ilike.%${search}%,motor_carrier_id.ilike.%${search}%`
-      );
-    }
-
-    if (statusFilter !== "all") {
-      query = query.eq("status_id", parseInt(statusFilter));
-    }
-
-    const from = (page - 1) * perPage;
-    const to = from + perPage - 1;
-    const { data, count, error } = await query.range(from, to);
-
-    if (error) {
-      setError(error.message);
-    } else {
-      setCarriers(data as Carrier[]);
-      setTotal(count || 0);
+    try {
+      const result = await searchCarriers(search, statusFilter, page, perPage);
+      setCarriers(result.data as Carrier[]);
+      setTotal(result.count);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error al cargar carriers");
     }
     setLoading(false);
-  }
+  }, [search, statusFilter, page]);
+
+  useEffect(() => {
+    fetchCarriers();
+  }, [fetchCarriers]);
 
   function openCreate() {
     setEditingCarrier(null);
@@ -171,27 +152,16 @@ export default function CarriersPage() {
       return;
     }
 
-    if (editingCarrier) {
-      const { error } = await supabase
-        .from("carriers")
-        .update(result.data)
-        .eq("carrier_id", editingCarrier.carrier_id);
-
-      if (error) {
-        setError(error.message);
+    try {
+      if (editingCarrier) {
+        await updateCarrier(editingCarrier.carrier_id, result.data);
       } else {
-        setDialogOpen(false);
-        fetchCarriers();
+        await createCarrier(result.data);
       }
-    } else {
-      const { error } = await supabase.from("carriers").insert([result.data]);
-
-      if (error) {
-        setError(error.message);
-      } else {
-        setDialogOpen(false);
-        fetchCarriers();
-      }
+      setDialogOpen(false);
+      fetchCarriers();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error al guardar carrier");
     }
     setFormLoading(false);
   }
@@ -199,15 +169,11 @@ export default function CarriersPage() {
   async function handleDelete(carrierId: number) {
     if (!confirm("¿Estás seguro de eliminar este carrier?")) return;
 
-    const { error } = await supabase
-      .from("carriers")
-      .update({ status_id: 2 })
-      .eq("carrier_id", carrierId);
-
-    if (error) {
-      setError(error.message);
-    } else {
+    try {
+      await softDeleteCarrier(carrierId);
       fetchCarriers();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error al eliminar carrier");
     }
   }
 
