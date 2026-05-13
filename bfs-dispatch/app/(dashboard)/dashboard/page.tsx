@@ -1,14 +1,11 @@
-import { createClient } from "@supabase/supabase-js";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Package, DollarSign, TrendingUp, Truck, ShieldAlert } from "lucide-react";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 async function getKPIs() {
+  const supabase = await createSupabaseServerClient();
+
   const { count: totalLoads } = await supabase
     .from("loads")
     .select("*", { count: "exact", head: true });
