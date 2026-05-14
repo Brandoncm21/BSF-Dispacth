@@ -21,8 +21,8 @@ import { TableSkeleton } from "@/components/table-skeleton";
 import { searchCarriers, createCarrier, updateCarrier, softDeleteCarrier } from "@/lib/actions";
 
 const carrierSchema = z.object({
-  first_name: z.string().min(1, "Nombre es requerido"),
-  last_name: z.string().min(1, "Apellido es requerido"),
+  company_name: z.string().min(1, "Nombre de empresa es requerido"),
+  owner_name: z.string().optional(),
   email: z.string().email("Email inválido").or(z.literal("")),
   phone_number: z.string().optional(),
   address: z.string().optional(),
@@ -30,14 +30,15 @@ const carrierSchema = z.object({
   us_department_of_transportation_number: z.string().optional(),
   employer_identification_number: z.string().optional(),
   social_security_number: z.string().optional(),
+  dispatch_fee_percent: z.coerce.number().min(0).max(1).optional().nullable(),
   factoring: z.boolean().default(false),
   status_id: z.number().default(1),
 });
 
 type Carrier = {
   carrier_id: number;
-  first_name: string;
-  last_name: string;
+  company_name: string;
+  owner_name: string | null;
   email: string | null;
   phone_number: string | null;
   address: string | null;
@@ -45,6 +46,7 @@ type Carrier = {
   us_department_of_transportation_number: string | null;
   employer_identification_number: string | null;
   social_security_number: string | null;
+  dispatch_fee_percent: string | null;
   factoring: boolean;
   mc_number: string | null;
   status_id: number;
@@ -52,8 +54,8 @@ type Carrier = {
 };
 
 type CarrierForm = {
-  first_name: string;
-  last_name: string;
+  company_name: string;
+  owner_name: string;
   email: string;
   phone_number: string;
   address: string;
@@ -61,13 +63,14 @@ type CarrierForm = {
   us_department_of_transportation_number: string;
   employer_identification_number: string;
   social_security_number: string;
+  dispatch_fee_percent: string;
   factoring: boolean;
   status_id: number;
 };
 
 const emptyForm: CarrierForm = {
-  first_name: "",
-  last_name: "",
+  company_name: "",
+  owner_name: "",
   email: "",
   phone_number: "",
   address: "",
@@ -75,6 +78,7 @@ const emptyForm: CarrierForm = {
   us_department_of_transportation_number: "",
   employer_identification_number: "",
   social_security_number: "",
+  dispatch_fee_percent: "",
   factoring: false,
   status_id: 1,
 };
@@ -120,8 +124,8 @@ export default function CarriersPage() {
   function openEdit(carrier: Carrier) {
     setEditingCarrier(carrier);
     setForm({
-      first_name: carrier.first_name,
-      last_name: carrier.last_name,
+      company_name: carrier.company_name,
+      owner_name: carrier.owner_name || "",
       email: carrier.email || "",
       phone_number: carrier.phone_number || "",
       address: carrier.address || "",
@@ -129,6 +133,7 @@ export default function CarriersPage() {
       us_department_of_transportation_number: carrier.us_department_of_transportation_number || "",
       employer_identification_number: carrier.employer_identification_number || "",
       social_security_number: carrier.social_security_number || "",
+      dispatch_fee_percent: carrier.dispatch_fee_percent || "",
       factoring: carrier.factoring || false,
       status_id: carrier.status_id || 1,
     });
@@ -252,7 +257,10 @@ export default function CarriersPage() {
                 {carriers.map((carrier) => (
                   <tr key={carrier.carrier_id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900">
                     <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-50">
-                      {carrier.first_name} {carrier.last_name}
+                      {carrier.company_name}
+                      {carrier.owner_name && (
+                        <span className="block text-xs text-zinc-500 dark:text-zinc-400">{carrier.owner_name}</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 font-mono">
                       {carrier.motor_carrier_id || "—"}
@@ -332,26 +340,23 @@ export default function CarriersPage() {
 
           <div className="grid grid-cols-2 gap-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="first_name">Nombre *</Label>
+              <Label htmlFor="company_name">Nombre de Empresa *</Label>
               <Input
-                id="first_name"
-                value={form.first_name}
-                onChange={(e) => setForm({ ...form, first_name: e.target.value })}
+                id="company_name"
+                value={form.company_name}
+                onChange={(e) => setForm({ ...form, company_name: e.target.value })}
               />
-              {formErrors.first_name && (
-                <p className="text-xs text-red-500">{formErrors.first_name}</p>
+              {formErrors.company_name && (
+                <p className="text-xs text-red-500">{formErrors.company_name}</p>
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="last_name">Apellido *</Label>
+              <Label htmlFor="owner_name">Nombre del Owner</Label>
               <Input
-                id="last_name"
-                value={form.last_name}
-                onChange={(e) => setForm({ ...form, last_name: e.target.value })}
+                id="owner_name"
+                value={form.owner_name}
+                onChange={(e) => setForm({ ...form, owner_name: e.target.value })}
               />
-              {formErrors.last_name && (
-                <p className="text-xs text-red-500">{formErrors.last_name}</p>
-              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="motor_carrier_id">MC Number *</Label>
@@ -363,6 +368,19 @@ export default function CarriersPage() {
               {formErrors.motor_carrier_id && (
                 <p className="text-xs text-red-500">{formErrors.motor_carrier_id}</p>
               )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="dispatch_fee_percent">Dispatch Fee %</Label>
+              <Input
+                id="dispatch_fee_percent"
+                type="number"
+                min="0"
+                max="1"
+                step="0.0001"
+                value={form.dispatch_fee_percent}
+                onChange={(e) => setForm({ ...form, dispatch_fee_percent: e.target.value })}
+                placeholder="0.05"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>

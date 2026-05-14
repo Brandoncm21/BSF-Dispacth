@@ -5,7 +5,7 @@ export type Load = {
   load_id: number;
   load_number: string | null;
   load_data: string | null;
-  load_weight: number | null;
+  weight_lbs: number | null;
   rate: number | null;
   dispatch_fee: number | null;
   load_status: string | null;
@@ -28,7 +28,7 @@ export type Load = {
 
 export type LoadForm = {
   load_data: string;
-  load_weight: string;
+  weight_lbs: string;
   carrier_id: string;
   truck_id: string;
   driver_id: string;
@@ -49,7 +49,7 @@ export type SelectOption = { id: number; label: string };
 
 export const emptyForm: LoadForm = {
   load_data: "",
-  load_weight: "",
+  weight_lbs: "",
   carrier_id: "",
   truck_id: "",
   driver_id: "",
@@ -70,7 +70,7 @@ export const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 export const loadSchema = z.object({
   load_data: z.string().optional().or(z.literal("")),
-  load_weight: z.coerce.number().optional().nullable(),
+  weight_lbs: z.coerce.number().optional().nullable(),
   carrier_id: z.coerce.number().int().positive("Carrier es requerido"),
   truck_id: z.coerce.number().int().positive("Truck es requerido"),
   driver_id: z.coerce.number().int().positive("Driver es requerido"),

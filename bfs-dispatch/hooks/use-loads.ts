@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
-import { updateLoadStatus, deleteLoad as deleteLoadAction, createCargoType, createSpecialRequirement } from "@/lib/actions";
+import { searchLoads as searchLoadsAction, updateLoadStatus, deleteLoad as deleteLoadAction, createCargoType, createSpecialRequirement } from "@/lib/actions";
 import { parseSupabaseError, AppError } from "@/lib/errors";
 import type { Load, SelectOption } from "@/types/load";
 
@@ -27,23 +27,12 @@ export function useLoads() {
 
   const fetchLoads = useCallback(async () => {
     setLoading(true);
-    const offset = (page - 1) * PAGE_SIZE;
-
-    const { data, error: rpcError } = await supabase.rpc("search_loads", {
-      p_search: search || null,
-      p_status: statusFilter !== "all" ? statusFilter : null,
-      p_limit: PAGE_SIZE,
-      p_offset: offset,
-    });
-
-    if (rpcError) {
-      setError(parseSupabaseError(rpcError));
-      setLoads([]);
-      setTotalItems(0);
-    } else if (data && data.length > 0) {
-      setLoads(data as Load[]);
-      setTotalItems(data[0].total_count || 0);
-    } else {
+    try {
+      const result = await searchLoadsAction(search, statusFilter, page, PAGE_SIZE);
+      setLoads(result.data as Load[]);
+      setTotalItems(result.count);
+    } catch (e) {
+      setError(parseSupabaseError(e instanceof Error ? e : { message: "Error al cargar loads" }));
       setLoads([]);
       setTotalItems(0);
     }
@@ -52,14 +41,14 @@ export function useLoads() {
 
   const fetchSelectOptions = useCallback(async () => {
     const [carriersRes, trucksRes, driversRes, cargoRes, reqRes] = await Promise.all([
-      supabase.from("carriers").select("carrier_id, first_name, last_name").eq("status_id", 1),
+      supabase.from("carriers").select("carrier_id, company_name").eq("status_id", 1),
       supabase.from("trucks").select("truck_id, unit_number, carrier_id").eq("status_id", 1),
       supabase.from("drivers").select("driver_id, first_name, last_name, carrier_id").eq("status_id", 1),
       supabase.from("cargo_types").select("cargo_type_id, cargo_type_name").eq("status_id", 1),
       supabase.from("special_requirements").select("special_requirements_id, requirement_description").eq("status_id", 1),
     ]);
 
-    if (carriersRes.data) setCarriers(carriersRes.data.map((c) => ({ id: c.carrier_id, label: `${c.first_name} ${c.last_name}` })));
+    if (carriersRes.data) setCarriers(carriersRes.data.map((c) => ({ id: c.carrier_id, label: c.company_name })));
     if (trucksRes.data) {
       const allTrucks = trucksRes.data.map((t) => ({ id: t.truck_id, label: t.unit_number }));
       setTrucks(allTrucks);

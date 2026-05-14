@@ -1,14 +1,18 @@
 "use client";
 
-import { useState, useEffect, forwardRef, useImperativeHandle, type Ref } from "react";
+import { useState, useEffect, forwardRef, useImperativeHandle, useCallback, type Ref } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Upload } from "lucide-react";
 import { RouteSelector } from "@/components/route-selector";
 import { CreatableSelect } from "@/components/creatable-select";
 import { TruckSelector } from "@/components/truck-selector";
+import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
+import { getDriversByCarrier, getTrucksByCarrier } from "@/lib/actions";
 import { LOAD_STATUS, LOAD_STATUS_LABELS, PAID_STATUS } from "@/lib/constants";
 import { loadSchema, LoadForm as LoadFormType, SelectOption, LoadFormSubmitData, MAX_FILE_SIZE } from "@/types/load";
+
+const supabase = createSupabaseBrowserClient();
 
 type LoadFormProps = {
   initialValues?: LoadFormType;
@@ -30,7 +34,7 @@ export type LoadFormHandle = {
 export const LoadForm = forwardRef<LoadFormHandle, LoadFormProps>(function LoadForm({
   initialValues,
   onSubmit,
-  isLoading,
+  isLoading: _isLoading,
   carriers,
   trucks,
   drivers,
@@ -41,7 +45,7 @@ export const LoadForm = forwardRef<LoadFormHandle, LoadFormProps>(function LoadF
 }: LoadFormProps, ref: Ref<LoadFormHandle>) {
   const [form, setForm] = useState<LoadFormType>(initialValues ?? {
     load_data: "",
-    load_weight: "",
+    weight_lbs: "",
     carrier_id: "",
     truck_id: "",
     driver_id: "",
@@ -61,6 +65,8 @@ export const LoadForm = forwardRef<LoadFormHandle, LoadFormProps>(function LoadF
   const [rcFile, setRcFile] = useState<File | null>(null);
   const [bolFile, setBolFile] = useState<File | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [filteredDrivers, setFilteredDrivers] = useState<SelectOption[]>(drivers);
+  const [dispatchFeePercent, setDispatchFeePercent] = useState<string>("");
 
   useEffect(() => {
     if (initialValues) {
@@ -68,12 +74,47 @@ export const LoadForm = forwardRef<LoadFormHandle, LoadFormProps>(function LoadF
     }
   }, [initialValues]);
 
-  const estimatedProfit = form.rate && form.dispatch_fee_pct
-    ? (parseFloat(form.rate) * parseFloat(form.dispatch_fee_pct)) / 100
+  const computedDispatchFee = form.rate && dispatchFeePercent
+    ? (parseFloat(form.rate) * parseFloat(dispatchFeePercent)) / 100
     : 0;
 
-  const filteredTrucks = trucks;
-  const filteredDrivers = drivers;
+  const fetchFilteredOptions = useCallback(async (carrierId: number) => {
+    if (!carrierId) {
+      setFilteredDrivers(drivers);
+      setDispatchFeePercent("");
+      return;
+    }
+    try {
+      const [driverData, carrierData] = await Promise.all([
+        getDriversByCarrier(carrierId),
+        supabase.from("carriers").select("dispatch_fee_percent").eq("carrier_id", carrierId).single(),
+      ]);
+      setFilteredDrivers(driverData.map((d: { driver_id: number; first_name: string; last_name: string }) => ({
+        id: d.driver_id,
+        label: `${d.first_name} ${d.last_name}`,
+      })));
+      if (carrierData.data && carrierData.data.dispatch_fee_percent !== null) {
+        const feePct = String(carrierData.data.dispatch_fee_percent);
+        setDispatchFeePercent(feePct);
+        if (!initialValues?.dispatch_fee_pct) {
+          setForm((prev) => ({ ...prev, dispatch_fee_pct: feePct }));
+        }
+      }
+    } catch (e) {
+      console.error("Error fetching filtered options:", e);
+      setFilteredDrivers(drivers);
+    }
+  }, [drivers, initialValues]);
+
+  const handleCarrierChange = (carrierId: string) => {
+    setForm((prev) => ({ ...prev, carrier_id: carrierId, driver_id: "", truck_id: "" }));
+    setDispatchFeePercent("");
+    if (carrierId) {
+      fetchFilteredOptions(parseInt(carrierId));
+    } else {
+      setFilteredDrivers(drivers);
+    }
+  };
 
   useImperativeHandle(ref, () => ({
     submit: handleSubmit,
@@ -114,7 +155,7 @@ export const LoadForm = forwardRef<LoadFormHandle, LoadFormProps>(function LoadF
         <select
           id="carrier_id"
           value={form.carrier_id}
-          onChange={(e) => setForm({ ...form, carrier_id: e.target.value, driver_id: "", truck_id: "" })}
+          onChange={(e) => handleCarrierChange(e.target.value)}
           className="flex w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-transparent px-3 py-2 text-sm"
         >
           <option value="">Seleccionar</option>
@@ -228,24 +269,24 @@ export const LoadForm = forwardRef<LoadFormHandle, LoadFormProps>(function LoadF
         />
       </div>
 
-      {estimatedProfit > 0 && (
-        <div className="col-span-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-md p-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-emerald-700 dark:text-emerald-400">Profit Estimado:</span>
-            <span className="font-bold text-emerald-700 dark:text-emerald-400">
-              ${estimatedProfit.toLocaleString("es-CR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      {computedDispatchFee > 0 && (
+        <div className="space-y-2">
+          <Label>Dispatch Fee</Label>
+          <div className="flex items-center h-10 px-3 rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-sm">
+            <span className="font-medium text-emerald-600 dark:text-emerald-400">
+              ${computedDispatchFee.toLocaleString("es-CR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
         </div>
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="load_weight">Peso (kg)</Label>
+        <Label htmlFor="weight_lbs">Peso (lbs)</Label>
         <Input
-          id="load_weight"
+          id="weight_lbs"
           type="number"
-          value={form.load_weight}
-          onChange={(e) => setForm({ ...form, load_weight: e.target.value })}
+          value={form.weight_lbs}
+          onChange={(e) => setForm({ ...form, weight_lbs: e.target.value })}
         />
       </div>
 

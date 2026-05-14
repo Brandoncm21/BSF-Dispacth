@@ -3,14 +3,17 @@ export {
   updateLoad,
   deleteLoad,
   updateLoadStatus,
+  searchLoads,
 } from "./actions/loads";
 
 export {
   getStates,
   getCities,
   searchAddresses,
+  getCarrierById,
   searchCarriers,
   searchDrivers,
+  getDriverById,
   createCarrier,
   updateCarrier,
   softDeleteCarrier,
@@ -27,6 +30,8 @@ export {
   getCarriersSimple,
   createCargoType,
   createSpecialRequirement,
+  getDriversByCarrier,
+  getCarrierDispatchFee,
 } from "./actions/catalog";
 
 export {
@@ -66,19 +71,31 @@ export type {
 } from "./actions/sales";
 
 export {
+  getTruckById,
   getTrucksWithAvailability,
   getTruckLoadHistory,
   getFleetOverview,
   getFleetAlerts,
   getTrucksWithSmartStatus,
+  getTrucksByCarrier,
   searchTrucks,
   updateTruckStatus,
   createTruck,
   updateTruck,
+  getBrokerById,
   getBrokers,
   createBroker,
   updateBroker,
   searchBrokers,
+  getMaintenanceRecords,
+  createMaintenanceRecord,
+  updateMaintenanceRecord,
+  deleteMaintenanceRecord,
+  getBrokerContacts,
+  createBrokerContact,
+  updateBrokerContact,
+  deleteBrokerContact,
+  setPrimaryContact,
 } from "./actions/fleet";
 
 export type {

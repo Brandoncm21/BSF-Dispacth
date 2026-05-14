@@ -22,20 +22,21 @@ import {
 } from "recharts";
 import { SalesAnalyticsDashboard } from "@/components/sales-analytics";
 
-type CarrierInfo = { first_name: string; last_name: string } | null;
+type CarrierInfo = { company_name: string; owner_name?: string | null } | null;
+type DriverInfo = { first_name: string; last_name: string } | null;
 
 type LoadData = {
   load_id: number;
   load_number: string | null;
   load_data: string | null;
-  load_weight: number | null;
+  weight_lbs: number | null;
   rate: number | null;
   dispatch_fee: number | null;
   load_status: string | null;
   paid_status: string | null;
   created_at?: string;
   carriers: CarrierInfo;
-  drivers: CarrierInfo;
+  drivers: DriverInfo;
   routes: { miles: number | null } | null;
   cargo_types: { cargo_type_name: string } | null;
 };
@@ -69,8 +70,8 @@ export default function ReportsPage() {
     const { data: loadsData, error: loadsError } = await supabase
       .from("loads")
       .select(`
-        load_id, load_number, load_data, load_weight, rate, dispatch_fee, load_status, paid_status, created_at,
-        carriers(first_name, last_name),
+        load_id, load_number, load_data, weight_lbs, rate, dispatch_fee, load_status, paid_status, created_at,
+        carriers(company_name, owner_name),
         drivers(first_name, last_name),
         routes(miles),
         cargo_types(cargo_type_name)
@@ -106,7 +107,7 @@ export default function ReportsPage() {
   function processCarrierRPM(loadsData: LoadData[]) {
     const carriers: Record<string, { name: string; loads: number; miles: number; revenue: number }> = {};
     loadsData.forEach((load) => {
-      const name = load.carriers ? `${load.carriers.first_name} ${load.carriers.last_name}` : "Unknown";
+      const name = load.carriers ? load.carriers.company_name : "Unknown";
       if (!carriers[name]) carriers[name] = { name, loads: 0, miles: 0, revenue: 0 };
       carriers[name].loads += 1;
       carriers[name].miles += load.routes?.miles || 0;
@@ -128,7 +129,7 @@ export default function ReportsPage() {
     const headers = ["Load#", "Carrier", "Driver", "Cargo", "Miles", "Rate", "Dispatch Fee", "$/Mile", "Status"];
     const rows = loads.map((l) => [
       l.load_number || "",
-      l.carriers ? `${l.carriers.first_name} ${l.carriers.last_name}` : "",
+      l.carriers ? l.carriers.company_name : "",
       l.drivers ? `${l.drivers.first_name} ${l.drivers.last_name}` : "",
       l.cargo_types?.cargo_type_name || "",
       l.routes?.miles || 0,

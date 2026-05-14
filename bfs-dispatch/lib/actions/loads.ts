@@ -19,7 +19,7 @@ const createLoadSchema = z.object({
   ),
   rate: z.coerce.number().min(0, "Rate es requerido"),
   dispatch_fee_pct: z.coerce.number().min(0).max(100).optional().nullable(),
-  load_weight: z.coerce.number().optional().nullable(),
+  weight_lbs: z.coerce.number().optional().nullable(),
   load_data: z.string().optional().nullable(),
   factoring: z.boolean().default(false),
   load_status: z.string().default(LOAD_STATUS.PENDING),
@@ -57,8 +57,6 @@ export async function createLoad(formData: z.infer<typeof createLoadSchema>) {
     }
   }
 
-  const dispatchFee = data.rate * ((data.dispatch_fee_pct || 0) / 100);
-
   const insertData: Record<string, unknown> = {
     carrier_id: data.carrier_id,
     truck_id: data.truck_id,
@@ -67,9 +65,8 @@ export async function createLoad(formData: z.infer<typeof createLoadSchema>) {
     cargo_type_id: data.cargo_type_id || null,
     special_requirements_id: data.special_requirements_id || null,
     rate: data.rate,
-    dispatch_fee: dispatchFee,
     dispatch_fee_pct: data.dispatch_fee_pct,
-    load_weight: data.load_weight || null,
+    weight_lbs: data.weight_lbs || null,
     load_data: data.load_data || null,
     factoring: data.factoring,
     load_status: data.load_status,
@@ -90,6 +87,7 @@ export async function createLoad(formData: z.infer<typeof createLoadSchema>) {
     .single();
 
   if (loadError) {
+    console.error("[createLoad]", loadError.message, loadError.hint);
     return { error: loadError.message };
   }
 
@@ -111,7 +109,7 @@ const updateLoadSchema = z.object({
   ),
   rate: z.coerce.number().min(0, "Rate es requerido").optional(),
   dispatch_fee_pct: z.coerce.number().min(0).max(100).optional().nullable(),
-  load_weight: z.coerce.number().optional().nullable(),
+  weight_lbs: z.coerce.number().optional().nullable(),
   load_data: z.string().optional().nullable(),
   factoring: z.boolean().optional(),
   load_status: z.string().optional(),
@@ -144,7 +142,7 @@ export async function updateLoad(loadId: number, formData: z.infer<typeof update
   if (data.special_requirements_id !== undefined) updateData.special_requirements_id = data.special_requirements_id || null;
   if (data.rate !== undefined) updateData.rate = data.rate;
   if (data.dispatch_fee_pct !== undefined) updateData.dispatch_fee_pct = data.dispatch_fee_pct;
-  if (data.load_weight !== undefined) updateData.load_weight = data.load_weight || null;
+  if (data.weight_lbs !== undefined) updateData.weight_lbs = data.weight_lbs || null;
   if (data.load_data !== undefined) updateData.load_data = data.load_data || null;
   if (data.factoring !== undefined) updateData.factoring = data.factoring;
   if (data.load_status !== undefined) updateData.load_status = data.load_status;
@@ -152,24 +150,15 @@ export async function updateLoad(loadId: number, formData: z.infer<typeof update
   if (data.picked_up_at !== undefined) updateData.picked_up_at = data.picked_up_at || null;
   if (data.delivered_at !== undefined) updateData.delivered_at = data.delivered_at || null;
 
-  if (data.rate !== undefined || data.dispatch_fee_pct !== undefined) {
-    const { data: existing } = await supabase
-      .from("loads")
-      .select("rate, dispatch_fee_pct")
-      .eq("load_id", loadId)
-      .single();
-
-    const effectiveRate = data.rate ?? existing?.rate ?? 0;
-    const effectivePct = data.dispatch_fee_pct ?? existing?.dispatch_fee_pct ?? 0;
-    updateData.dispatch_fee = effectiveRate * (effectivePct / 100);
-  }
-
   const { error } = await supabase
     .from("loads")
     .update(updateData)
     .eq("load_id", loadId);
 
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[updateLoad]", error.message, error.hint);
+    return { error: error.message };
+  }
   return { success: true };
 }
 
@@ -181,7 +170,10 @@ export async function deleteLoad(loadId: number) {
     .update({ status_id: 2 })
     .eq("load_id", loadId);
 
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[deleteLoad]", error.message, error.hint);
+    return { error: error.message };
+  }
   return { success: true };
 }
 
@@ -193,6 +185,34 @@ export async function updateLoadStatus(loadId: number, status: string) {
     .update({ load_status: status })
     .eq("load_id", loadId);
 
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[updateLoadStatus]", error.message, error.hint);
+    return { error: error.message };
+  }
   return { success: true };
+}
+
+export async function searchLoads(
+  search: string,
+  statusFilter: string,
+  page: number,
+  pageSize: number
+) {
+  const supabase = await getSupabaseServerClient();
+  const offset = (page - 1) * pageSize;
+
+  const { data, error } = await supabase.rpc("search_loads", {
+    p_search: search || null,
+    p_status: statusFilter !== "all" ? statusFilter : null,
+    p_limit: pageSize,
+    p_offset: offset,
+  });
+
+  if (error) {
+    console.error("[searchLoads]", error.message, error.hint);
+    throw error;
+  }
+  const rows = data || [];
+  const total = rows.length > 0 ? Number(rows[0].total_count) : 0;
+  return { data: rows, count: total };
 }

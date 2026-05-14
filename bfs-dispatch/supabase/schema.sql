@@ -92,6 +92,8 @@ CREATE TABLE employees (
 
 CREATE TABLE carriers (
     carrier_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    company_name VARCHAR(255) NOT NULL,
+    owner_name VARCHAR(255),
     first_name VARCHAR(255) NOT NULL,
     last_name VARCHAR(255) NOT NULL,
     address VARCHAR(255),
@@ -101,7 +103,11 @@ CREATE TABLE carriers (
     us_department_of_transportation_number VARCHAR(50),
     employer_identification_number VARCHAR(50),
     social_security_number VARCHAR(50),
-    status_id INTEGER REFERENCES record_status(status_id)
+    factoring BOOLEAN DEFAULT FALSE,
+    status_id INTEGER REFERENCES record_status(status_id),
+    mc_number VARCHAR(50),
+    dot_number VARCHAR(50),
+    dispatch_fee_percent NUMERIC(5,4) DEFAULT 0.05
 );
 
 CREATE TABLE drivers (
@@ -267,10 +273,10 @@ INSERT INTO employees (first_name, last_name, role_id, status_id) VALUES
     ('Diana', 'Solano', 2, 1),
     ('Luis', 'Vargas', 3, 1);
 
-INSERT INTO carriers (first_name, last_name, address, phone_number, email, motor_carrier_id, us_department_of_transportation_number, employer_identification_number, social_security_number, status_id) VALUES
-    ('Pedro', 'Cruz', 'Av. 10', '8888-4444', 'pedro@example.com', 'MC123', 'DOT456', 'XX-XXXXXXX', '***-**-****', 1),
-    ('Lucía', 'Valverde', 'Calle 8', '8888-5555', 'lucia@example.com', 'MC124', 'DOT457', 'XX-XXXXXXX', '***-**-****', 1),
-    ('Marco', 'Salas', 'Ruta 32', '8888-6666', 'marco@example.com', 'MC125', 'DOT458', 'XX-XXXXXXX', '***-**-****', 1);
+INSERT INTO carriers (company_name, owner_name, first_name, last_name, address, phone_number, email, motor_carrier_id, us_department_of_transportation_number, employer_identification_number, social_security_number, status_id, mc_number, dispatch_fee_percent) VALUES
+    ('Transportes Pedro Cruz', 'Pedro Cruz', 'Transportes Pedro Cruz', 'Pedro Cruz', 'Av. 10', '8888-4444', 'pedro@example.com', 'MC123', 'DOT456', 'XX-XXXXXXX', '***-**-****', 1, 'MC-123456', 0.05),
+    ('Lucía Valverde Logistics', 'Lucía Valverde', 'Lucía Valverde Logistics', 'Lucía Valverde', 'Calle 8', '8888-5555', 'lucia@example.com', 'MC124', 'DOT457', 'XX-XXXXXXX', '***-**-****', 1, 'MC-124579', 0.06),
+    ('Marco Salas Transport', 'Marco Salas', 'Marco Salas Transport', 'Marco Salas', 'Ruta 32', '8888-6666', 'marco@example.com', 'MC125', 'DOT458', 'XX-XXXXXXX', '***-**-****', 1, 'MC-125841', 0.05);
 
 INSERT INTO trucks (unit_number, vehicle_type, capacity, operational_status, carrier_id, status_id) VALUES
     ('U001', 'Camión', 10, 'Activo', 1, 1),
