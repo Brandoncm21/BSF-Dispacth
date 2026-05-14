@@ -1,12 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { createBrowserClient } from "@supabase/ssr";
-
-const supabase = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { useState, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,11 +13,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Label } from "@/components/ui/label";
-import { Search, Plus, Edit2, Trash2, Loader2, X } from "lucide-react";
+import { Search, Plus, Edit2, Trash2, Loader2, X, User, MapPin, Clock, Truck as TruckIcon } from "lucide-react";
 import { z } from "zod";
 import { PaginationControls } from "@/components/pagination-controls";
 import { TableSkeleton } from "@/components/table-skeleton";
+import { searchDrivers, createDriver, updateDriver, softDeleteDriver, getActiveCarriers, getTruckLoadHistory } from "@/lib/actions";
+import { cn } from "@/lib/utils";
 
 const driverSchema = z.object({
   first_name: z.string().min(1, "Nombre es requerido"),
@@ -32,6 +29,7 @@ const driverSchema = z.object({
   license_type: z.string().optional(),
   cdl_number: z.string().optional(),
   carrier_id: z.number().min(1, "Carrier es requerido"),
+  has_twic_card: z.boolean().default(false),
   status_id: z.number().default(1),
 });
 
@@ -43,8 +41,9 @@ type Driver = {
   license_type: string | null;
   cdl_number: string | null;
   carrier_id: number;
+  has_twic_card: boolean;
   status_id: number;
-  carriers: { first_name: string; last_name: string } | null;
+  carriers: { company_name?: string; first_name?: string; last_name?: string } | null;
   record_status: { status_name: string } | null;
 };
 
@@ -55,6 +54,7 @@ type DriverForm = {
   license_type: string;
   cdl_number: string;
   carrier_id: number;
+  has_twic_card: boolean;
   status_id: number;
 };
 
@@ -65,14 +65,27 @@ const emptyForm: DriverForm = {
   license_type: "",
   cdl_number: "",
   carrier_id: 0,
+  has_twic_card: false,
   status_id: 1,
 };
 
 type Carrier = {
   carrier_id: number;
-  first_name: string;
-  last_name: string;
+  company_name: string;
+  mc_number?: string | null;
+  dispatch_fee_percent: number;
 };
+
+interface DriverHistoryItem {
+  load_id: number;
+  load_number: string;
+  load_date: string;
+  origin: string;
+  destination: string;
+  load_status: string;
+  rate: number;
+  driver_id?: number;
+}
 
 export default function DriversPage() {
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -89,43 +102,46 @@ export default function DriversPage() {
   const [total, setTotal] = useState(0);
   const perPage = 16;
 
+  const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
+  const [driverHistory, setDriverHistory] = useState<DriverHistoryItem[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  const fetchDrivers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const result = await searchDrivers(search, page, perPage);
+      setDrivers(result.data as Driver[]);
+      setTotal(result.count);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error al cargar drivers");
+    }
+    setLoading(false);
+  }, [search, page]);
+
+  const fetchCarriers = useCallback(async () => {
+    try {
+      const data = await getActiveCarriers();
+      setCarriers(data);
+    } catch { /* ignore */ }
+  }, []);
+
   useEffect(() => {
     fetchDrivers();
     fetchCarriers();
-  }, [search, page]);
+  }, [fetchDrivers, fetchCarriers]);
 
-  async function fetchDrivers() {
-    setLoading(true);
-    const offset = (page - 1) * perPage;
-
-    let query = supabase
-      .from("drivers")
-      .select("*, carriers(first_name, last_name), record_status:status_id(status_name)", { count: "exact" });
-
-    if (search) {
-      query = query.or(
-        `first_name.ilike.%${search}%,last_name.ilike.%${search}%,cdl_number.ilike.%${search}%`
-      );
+  async function handleViewDetails(driver: Driver) {
+    setSelectedDriver(driver);
+    setLoadingHistory(true);
+    try {
+      const driverLoads = await getTruckLoadHistory(driver.carrier_id, 30);
+      const filteredLoads = driverLoads.filter((l: any) => l.driver_id === driver.driver_id || l.driver_id === null);
+      setDriverHistory(driverLoads.slice(0, 5) as DriverHistoryItem[]);
+    } catch (e) {
+      console.error("Error fetching driver history:", e);
+      setDriverHistory([]);
     }
-
-    const { data, count, error } = await query.range(offset, offset + perPage - 1);
-
-    if (error) {
-      setError(error.message);
-    } else {
-      setDrivers(data as Driver[]);
-      setTotal(count || 0);
-    }
-    setLoading(false);
-  }
-
-  async function fetchCarriers() {
-    const { data } = await supabase
-      .from("carriers")
-      .select("carrier_id, first_name, last_name")
-      .eq("status_id", 1);
-
-    if (data) setCarriers(data);
+    setLoadingHistory(false);
   }
 
   function openCreate() {
@@ -144,6 +160,7 @@ export default function DriversPage() {
       license_type: driver.license_type || "",
       cdl_number: driver.cdl_number || "",
       carrier_id: driver.carrier_id,
+      has_twic_card: driver.has_twic_card || false,
       status_id: driver.status_id || 1,
     });
     setFormErrors({});
@@ -154,7 +171,17 @@ export default function DriversPage() {
     setFormLoading(true);
     setFormErrors({});
 
-    const result = driverSchema.safeParse(form);
+    const dataToSubmit = {
+      first_name: form.first_name,
+      last_name: form.last_name,
+      phone_number: form.phone_number || undefined,
+      license_type: form.license_type || undefined,
+      cdl_number: form.cdl_number || undefined,
+      carrier_id: form.carrier_id,
+      has_twic_card: form.has_twic_card,
+    };
+
+    const result = driverSchema.safeParse(dataToSubmit);
     if (!result.success) {
       const errors: Record<string, string> = {};
       result.error.issues.forEach((issue) => {
@@ -166,25 +193,16 @@ export default function DriversPage() {
       return;
     }
 
-    if (editingDriver) {
-      const { error } = await supabase
-        .from("drivers")
-        .update(result.data)
-        .eq("driver_id", editingDriver.driver_id);
-
-      if (error) setError(error.message);
-      else {
-        setDialogOpen(false);
-        fetchDrivers();
+    try {
+      if (editingDriver) {
+        await updateDriver(editingDriver.driver_id, result.data);
+      } else {
+        await createDriver(result.data);
       }
-    } else {
-      const { error } = await supabase.from("drivers").insert([result.data]);
-
-      if (error) setError(error.message);
-      else {
-        setDialogOpen(false);
-        fetchDrivers();
-      }
+      setDialogOpen(false);
+      fetchDrivers();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error al guardar driver");
     }
     setFormLoading(false);
   }
@@ -192,13 +210,20 @@ export default function DriversPage() {
   async function handleDelete(driverId: number) {
     if (!confirm("¿Estás seguro de eliminar este driver?")) return;
 
-    const { error } = await supabase
-      .from("drivers")
-      .update({ status_id: 2 })
-      .eq("driver_id", driverId);
+    try {
+      await softDeleteDriver(driverId);
+      fetchDrivers();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error al eliminar driver");
+    }
+  }
 
-    if (error) setError(error.message);
-    else fetchDrivers();
+  function getCarrierName(carrier: Driver["carriers"]) {
+    return carrier?.company_name || (carrier?.first_name ? `${carrier.first_name} ${carrier.last_name}` : "—");
+  }
+
+  function isDriverBusy(driver: Driver) {
+    return driverHistory.some(h => h.driver_id === driver.driver_id && h.load_status !== "delivered");
   }
 
   return (
@@ -254,14 +279,24 @@ export default function DriversPage() {
                 <th className="text-left px-4 py-3 font-medium text-zinc-600 dark:text-zinc-400">CDL</th>
                 <th className="text-left px-4 py-3 font-medium text-zinc-600 dark:text-zinc-400">Carrier</th>
                 <th className="text-left px-4 py-3 font-medium text-zinc-600 dark:text-zinc-400">Estado</th>
+                <th className="text-left px-4 py-3 font-medium text-zinc-600 dark:text-zinc-400">TWIC</th>
                 <th className="text-right px-4 py-3 font-medium text-zinc-600 dark:text-zinc-400">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
               {drivers.map((driver) => (
                 <tr key={driver.driver_id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900">
-                  <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-50">
-                    {driver.first_name} {driver.last_name}
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <div>
+                        <span className="font-medium text-zinc-900 dark:text-zinc-50">
+                          {driver.first_name} {driver.last_name}
+                        </span>
+                        {driver.has_twic_card && (
+                          <Badge variant="secondary" className="ml-2 text-xs">TWIC</Badge>
+                        )}
+                      </div>
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
                     {driver.phone_number || "—"}
@@ -273,9 +308,7 @@ export default function DriversPage() {
                     {driver.cdl_number || "—"}
                   </td>
                   <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                    {driver.carriers
-                      ? `${driver.carriers.first_name} ${driver.carriers.last_name}`
-                      : "—"}
+                    {getCarrierName(driver.carriers)}
                   </td>
                   <td className="px-4 py-3">
                     <Badge
@@ -290,8 +323,18 @@ export default function DriversPage() {
                       {driver.record_status?.status_name || "—"}
                     </Badge>
                   </td>
+                  <td className="px-4 py-3">
+                    {driver.has_twic_card ? (
+                      <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Sí</span>
+                    ) : (
+                      <span className="text-xs text-zinc-400">No</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end gap-2">
+                      <Button variant="ghost" size="icon" onClick={() => handleViewDetails(driver)} title="Ver detalles">
+                        <User className="h-4 w-4" />
+                      </Button>
                       <Button variant="ghost" size="icon" onClick={() => openEdit(driver)}>
                         <Edit2 className="h-4 w-4" />
                       </Button>
@@ -308,7 +351,7 @@ export default function DriversPage() {
               ))}
               {drivers.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="text-center py-12 text-zinc-500">
+                  <td colSpan={8} className="text-center py-12 text-zinc-500">
                     No se encontraron drivers
                   </td>
                 </tr>
@@ -387,13 +430,23 @@ export default function DriversPage() {
                 <option value={0}>Seleccionar carrier</option>
                 {carriers.map((c) => (
                   <option key={c.carrier_id} value={c.carrier_id}>
-                    {c.first_name} {c.last_name}
+                    {c.company_name}
                   </option>
                 ))}
               </select>
               {formErrors.carrier_id && (
                 <p className="text-xs text-red-500">{formErrors.carrier_id}</p>
               )}
+            </div>
+            <div className="flex items-center gap-2 pt-2">
+              <input
+                type="checkbox"
+                id="has_twic_card"
+                checked={form.has_twic_card}
+                onChange={(e) => setForm({ ...form, has_twic_card: e.target.checked })}
+                className="h-4 w-4"
+              />
+              <Label htmlFor="has_twic_card">Posee Tarjeta TWIC</Label>
             </div>
           </div>
 
@@ -414,6 +467,107 @@ export default function DriversPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {selectedDriver && (
+        <Sheet open={!!selectedDriver} onOpenChange={(open) => !open && setSelectedDriver(null)}>
+          <SheetContent className="sm:max-w-[500px] overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle>Detalles del Driver</SheetTitle>
+              <SheetDescription>
+                {selectedDriver.first_name} {selectedDriver.last_name}
+              </SheetDescription>
+            </SheetHeader>
+
+            <div className="mt-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-xs text-zinc-500">Teléfono</p>
+                  <p className="text-sm font-medium">{selectedDriver.phone_number || "—"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-zinc-500">Licencia</p>
+                  <p className="text-sm font-medium">{selectedDriver.license_type || "—"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-zinc-500">CDL</p>
+                  <p className="text-sm font-medium font-mono">{selectedDriver.cdl_number || "—"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-zinc-500">TWIC Card</p>
+                  <p className="text-sm">
+                    {selectedDriver.has_twic_card ? (
+                      <span className="text-emerald-600 dark:text-emerald-400 font-medium">Sí posee</span>
+                    ) : (
+                      <span className="text-zinc-400">No posee</span>
+                    )}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-zinc-500">Carrier</p>
+                  <p className="text-sm font-medium">{getCarrierName(selectedDriver.carriers)}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-zinc-500">Estado</p>
+                  <Badge
+                    variant={
+                      selectedDriver.record_status?.status_name === "Activo"
+                        ? "default"
+                        : selectedDriver.record_status?.status_name === "Pendiente"
+                        ? "secondary"
+                        : "destructive"
+                    }
+                  >
+                    {selectedDriver.record_status?.status_name || "—"}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="border-t border-zinc-200 dark:border-zinc-700 pt-4">
+                <h3 className="font-medium text-sm mb-3 flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Últimos Viajes
+                </h3>
+
+                {loadingHistory ? (
+                  <div className="text-center py-4">
+                    <Loader2 className="h-5 w-5 animate-spin mx-auto text-zinc-400" />
+                  </div>
+                ) : driverHistory.length === 0 ? (
+                  <p className="text-sm text-zinc-500 text-center py-4">No hay viajes recientes</p>
+                ) : (
+                  <div className="space-y-2">
+                    {driverHistory.map((trip) => (
+                      <div key={trip.load_id} className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-mono text-sm text-blue-600 dark:text-blue-400">{trip.load_number}</span>
+                          <Badge variant={trip.load_status === "delivered" ? "default" : "secondary"} className="text-xs">
+                            {trip.load_status}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-zinc-500">
+                          <MapPin className="h-3 w-3" />
+                          {trip.origin} → {trip.destination}
+                        </div>
+                        <div className="flex items-center justify-between mt-1">
+                          <span className="text-xs text-zinc-400">{new Date(trip.load_date).toLocaleDateString("es-CR")}</span>
+                          <span className="text-sm font-medium">${trip.rate?.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-zinc-200 dark:border-zinc-700 pt-4 flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => { setSelectedDriver(null); openEdit(selectedDriver); }}>
+                  <Edit2 className="h-4 w-4 mr-1" />
+                  Editar
+                </Button>
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
     </div>
   );
 }

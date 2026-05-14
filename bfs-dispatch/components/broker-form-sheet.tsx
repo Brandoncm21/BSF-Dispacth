@@ -29,6 +29,8 @@ export function BrokerFormSheet({ open, onOpenChange, broker, onSuccess }: Broke
     last_name: "",
     email: "",
     phone_number: "",
+    mc_number: "",
+    usdot_number: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -41,6 +43,8 @@ export function BrokerFormSheet({ open, onOpenChange, broker, onSuccess }: Broke
         last_name: broker.last_name || "",
         email: broker.email || "",
         phone_number: broker.phone_number || "",
+        mc_number: broker.mc_number || "",
+        usdot_number: broker.usdot_number || "",
       });
     } else {
       setForm({
@@ -48,6 +52,8 @@ export function BrokerFormSheet({ open, onOpenChange, broker, onSuccess }: Broke
         last_name: "",
         email: "",
         phone_number: "",
+        mc_number: "",
+        usdot_number: "",
       });
     }
     setErrors({});
@@ -74,6 +80,8 @@ export function BrokerFormSheet({ open, onOpenChange, broker, onSuccess }: Broke
           last_name: form.last_name,
           email: form.email || undefined,
           phone_number: form.phone_number || undefined,
+          mc_number: form.mc_number || undefined,
+          usdot_number: form.usdot_number || undefined,
         });
       } else {
         await createBroker({
@@ -81,6 +89,8 @@ export function BrokerFormSheet({ open, onOpenChange, broker, onSuccess }: Broke
           last_name: form.last_name,
           email: form.email || undefined,
           phone_number: form.phone_number || undefined,
+          mc_number: form.mc_number || undefined,
+          usdot_number: form.usdot_number || undefined,
         });
       }
       onOpenChange(false);
@@ -158,6 +168,26 @@ export function BrokerFormSheet({ open, onOpenChange, broker, onSuccess }: Broke
               value={form.phone_number}
               onChange={(e) => setForm({ ...form, phone_number: e.target.value })}
               placeholder="ej: +1 555-123-4567"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="mc_number">MC Number</Label>
+            <Input
+              id="mc_number"
+              value={form.mc_number}
+              onChange={(e) => setForm({ ...form, mc_number: e.target.value })}
+              placeholder="ej: MC-123456"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="usdot_number">USDOT Number</Label>
+            <Input
+              id="usdot_number"
+              value={form.usdot_number}
+              onChange={(e) => setForm({ ...form, usdot_number: e.target.value })}
+              placeholder="ej: 1234567"
             />
           </div>
 

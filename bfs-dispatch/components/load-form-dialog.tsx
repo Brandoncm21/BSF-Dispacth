@@ -50,7 +50,7 @@ export function LoadFormDialog({
   const initialValues: LoadFormType | undefined = editingLoad
     ? {
         load_data: editingLoad.load_data || "",
-        load_weight: editingLoad.load_weight?.toString() || "",
+        weight_lbs: editingLoad.weight_lbs?.toString() || "",
         carrier_id: editingLoad.carrier_id?.toString() || "",
         truck_id: editingLoad.truck_id?.toString() || "",
         driver_id: editingLoad.driver_id?.toString() || "",
@@ -58,9 +58,7 @@ export function LoadFormDialog({
         cargo_type_id: editingLoad.cargo_type_id?.toString() || "",
         special_requirements_id: "",
         rate: editingLoad.rate?.toString() || "",
-        dispatch_fee_pct: editingLoad.dispatch_fee && editingLoad.rate && editingLoad.rate > 0
-          ? ((editingLoad.dispatch_fee / editingLoad.rate) * 100).toFixed(1)
-          : "",
+        dispatch_fee_pct: "",
         factoring: editingLoad.factoring || false,
         load_status: editingLoad.load_status || LOAD_STATUS.PENDING,
         paid_status: editingLoad.paid_status || PAID_STATUS.UNPAID,

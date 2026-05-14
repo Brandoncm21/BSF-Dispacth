@@ -29,6 +29,8 @@ export type Database = {
           last_name: string;
           email: string | null;
           phone_number: string | null;
+          mc_number: string | null;
+          usdot_number: string | null;
           status_id: number | null;
         };
         Insert: {
@@ -37,6 +39,8 @@ export type Database = {
           last_name: string;
           email?: string | null;
           phone_number?: string | null;
+          mc_number?: string | null;
+          usdot_number?: string | null;
           status_id?: number | null;
         };
         Update: {
@@ -45,7 +49,42 @@ export type Database = {
           last_name?: string;
           email?: string | null;
           phone_number?: string | null;
+          mc_number?: string | null;
+          usdot_number?: string | null;
           status_id?: number | null;
+        };
+      };
+
+      broker_contacts: {
+        Row: {
+          contact_id: number;
+          broker_id: number;
+          contact_name: string;
+          email: string | null;
+          phone: string | null;
+          is_primary: boolean;
+          status_id: number | null;
+          created_at: string | null;
+        };
+        Insert: {
+          contact_id?: number;
+          broker_id: number;
+          contact_name: string;
+          email?: string | null;
+          phone?: string | null;
+          is_primary?: boolean;
+          status_id?: number | null;
+          created_at?: string | null;
+        };
+        Update: {
+          contact_id?: number;
+          broker_id?: number;
+          contact_name?: string;
+          email?: string | null;
+          phone?: string | null;
+          is_primary?: boolean;
+          status_id?: number | null;
+          created_at?: string | null;
         };
       };
 
@@ -70,8 +109,8 @@ export type Database = {
       carriers: {
         Row: {
           carrier_id: number;
-          first_name: string;
-          last_name: string;
+          company_name: string;
+          owner_name: string | null;
           address: string | null;
           phone_number: string | null;
           email: string | null;
@@ -82,11 +121,13 @@ export type Database = {
           status_id: number | null;
           factoring: boolean | null;
           mc_number: string | null;
+          dot_number: string | null;
+          dispatch_fee_percent: number;
         };
         Insert: {
           carrier_id?: number;
-          first_name: string;
-          last_name: string;
+          company_name: string;
+          owner_name?: string | null;
           address?: string | null;
           phone_number?: string | null;
           email?: string | null;
@@ -97,11 +138,13 @@ export type Database = {
           status_id?: number | null;
           factoring?: boolean | null;
           mc_number?: string | null;
+          dot_number?: string | null;
+          dispatch_fee_percent?: number;
         };
         Update: {
           carrier_id?: number;
-          first_name?: string;
-          last_name?: string;
+          company_name?: string;
+          owner_name?: string | null;
           address?: string | null;
           phone_number?: string | null;
           email?: string | null;
@@ -112,6 +155,8 @@ export type Database = {
           status_id?: number | null;
           factoring?: boolean | null;
           mc_number?: string | null;
+          dot_number?: string | null;
+          dispatch_fee_percent?: number;
         };
       };
 
@@ -143,6 +188,7 @@ export type Database = {
           carrier_id: number | null;
           status_id: number | null;
           cdl_number: string | null;
+          has_twic_card: boolean;
         };
         Insert: {
           driver_id?: number;
@@ -153,6 +199,7 @@ export type Database = {
           carrier_id?: number | null;
           status_id?: number | null;
           cdl_number?: string | null;
+          has_twic_card?: boolean;
         };
         Update: {
           driver_id?: number;
@@ -163,6 +210,7 @@ export type Database = {
           carrier_id?: number | null;
           status_id?: number | null;
           cdl_number?: string | null;
+          has_twic_card?: boolean;
         };
       };
 
@@ -175,6 +223,7 @@ export type Database = {
           status_id: number | null;
           auth_user_id: string | null;
           dispatch_vendor: string | null;
+          email: string | null;
         };
         Insert: {
           employee_id?: number;
@@ -184,6 +233,7 @@ export type Database = {
           status_id?: number | null;
           auth_user_id?: string | null;
           dispatch_vendor?: string | null;
+          email?: string | null;
         };
         Update: {
           employee_id?: number;
@@ -193,6 +243,7 @@ export type Database = {
           status_id?: number | null;
           auth_user_id?: string | null;
           dispatch_vendor?: string | null;
+          email?: string | null;
         };
       };
 
@@ -201,9 +252,8 @@ export type Database = {
           load_id: number;
           load_number: string | null;
           load_data: string | null;
-          load_weight: number | null;
+          weight_lbs: number | null;
           rate: number | null;
-          dispatch_fee: number | null;
           dispatch_fee_pct: number | null;
           factoring: boolean;
           load_status: 'pending' | 'booked' | 'picked_up' | 'delivered' | 'paid' | null;
@@ -228,9 +278,8 @@ export type Database = {
           load_id?: number;
           load_number?: string | null;
           load_data?: string | null;
-          load_weight?: number | null;
+          weight_lbs?: number | null;
           rate?: number | null;
-          dispatch_fee?: number | null;
           dispatch_fee_pct?: number | null;
           factoring?: boolean;
           load_status?: 'pending' | 'booked' | 'picked_up' | 'delivered' | 'paid' | null;
@@ -255,9 +304,8 @@ export type Database = {
           load_id?: number;
           load_number?: string | null;
           load_data?: string | null;
-          load_weight?: number | null;
+          weight_lbs?: number | null;
           rate?: number | null;
-          dispatch_fee?: number | null;
           dispatch_fee_pct?: number | null;
           factoring?: boolean;
           load_status?: 'pending' | 'booked' | 'picked_up' | 'delivered' | 'paid' | null;
@@ -277,6 +325,63 @@ export type Database = {
           cargo_type_id?: number | null;
           special_requirements_id?: number | null;
           created_at?: string | null;
+        };
+      };
+
+      maintenance_records: {
+        Row: {
+          maintenance_id: number;
+          truck_id: number;
+          maintenance_type: string;
+          maintenance_date: string;
+          mileage: number | null;
+          description: string | null;
+          cost: number | null;
+          mechanic_notes: string | null;
+          status_id: number | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          maintenance_id?: number;
+          truck_id: number;
+          maintenance_type: string;
+          maintenance_date: string;
+          mileage?: number | null;
+          description?: string | null;
+          cost?: number | null;
+          mechanic_notes?: string | null;
+          status_id?: number | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          maintenance_id?: number;
+          truck_id?: number;
+          maintenance_type?: string;
+          maintenance_date?: string;
+          mileage?: number | null;
+          description?: string | null;
+          cost?: number | null;
+          mechanic_notes?: string | null;
+          status_id?: number | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+      };
+
+      record_status: {
+        Row: {
+          status_id: number;
+          status_name: string;
+        };
+        Insert: {
+          status_id?: number;
+          status_name: string;
+        };
+        Update: {
+          status_id?: number;
+          status_name?: string;
         };
       };
 
@@ -430,6 +535,12 @@ export type Database = {
           operational_status: string | null;
           carrier_id: number | null;
           status_id: number | null;
+          plate_number: string | null;
+          vin: string | null;
+          truck_name: string | null;
+          empty_weight: number | null;
+          photo_url: string | null;
+          driver_id: number | null;
         };
         Insert: {
           truck_id?: number;
@@ -439,6 +550,12 @@ export type Database = {
           operational_status?: string | null;
           carrier_id?: number | null;
           status_id?: number | null;
+          plate_number?: string | null;
+          vin?: string | null;
+          truck_name?: string | null;
+          empty_weight?: number | null;
+          photo_url?: string | null;
+          driver_id?: number | null;
         };
         Update: {
           truck_id?: number;
@@ -448,6 +565,12 @@ export type Database = {
           operational_status?: string | null;
           carrier_id?: number | null;
           status_id?: number | null;
+          plate_number?: string | null;
+          vin?: string | null;
+          truck_name?: string | null;
+          empty_weight?: number | null;
+          photo_url?: string | null;
+          driver_id?: number | null;
         };
       };
     };
@@ -493,11 +616,49 @@ export type Database = {
     };
 
     Functions: {
+      get_broker_contacts: {
+        Args: { p_broker_id: number };
+        Returns: Array<{
+          contact_id: number;
+          contact_name: string;
+          email: string | null;
+          phone: string | null;
+          is_primary: boolean;
+        }>;
+      };
+
+      get_carrier_dispatch_fee: {
+        Args: { p_carrier_id: number };
+        Returns: number;
+      };
+
+      get_drivers_by_carrier: {
+        Args: { p_carrier_id: number };
+        Returns: Array<{
+          driver_id: number;
+          first_name: string;
+          last_name: string;
+          phone_number: string | null;
+          license_type: string | null;
+          cdl_number: string | null;
+        }>;
+      };
+
+      get_maintenance_records: {
+        Args: { p_truck_id: number };
+        Returns: Array<{
+          maintenance_id: number;
+          maintenance_type: string;
+          maintenance_date: string;
+          mileage: number | null;
+          description: string | null;
+          cost: number | null;
+          mechanic_notes: string | null;
+        }>;
+      };
+
       get_truck_load_history: {
-        Args: {
-          p_truck_id: number;
-          p_days: number;
-        };
+        Args: { p_truck_id: number; p_days: number };
         Returns: Array<{
           load_id: number;
           load_number: string;
@@ -507,6 +668,18 @@ export type Database = {
           load_status: string;
           rate: number;
           dispatch_fee: number;
+        }>;
+      };
+
+      get_trucks_by_carrier: {
+        Args: { p_carrier_id: number };
+        Returns: Array<{
+          truck_id: number;
+          unit_number: string;
+          truck_name: string;
+          vehicle_type: string | null;
+          driver_id: number | null;
+          driver_name: string;
         }>;
       };
 
@@ -529,6 +702,74 @@ export type Database = {
       get_user_role_type: {
         Args: Record<string, never>;
         Returns: string;
+      };
+
+      search_brokers: {
+        Args: {
+          p_search: string | null;
+          p_status_id: number | null;
+          p_limit: number;
+          p_offset: number;
+        };
+        Returns: Array<{
+          broker_id: number;
+          first_name: string;
+          last_name: string;
+          email: string | null;
+          phone_number: string | null;
+          mc_number: string | null;
+          usdot_number: string | null;
+          status_id: number;
+          status_name: string;
+          total_count: number;
+        }>;
+      };
+
+      search_carriers: {
+        Args: {
+          p_search: string | null;
+          p_status_id: number | null;
+          p_limit: number;
+          p_offset: number;
+        };
+        Returns: Array<{
+          carrier_id: number;
+          company_name: string;
+          owner_name: string | null;
+          email: string | null;
+          phone_number: string | null;
+          motor_carrier_id: string | null;
+          mc_number: string | null;
+          dot_number: string | null;
+          dispatch_fee_percent: number;
+          factoring: boolean | null;
+          status_id: number;
+          status_name: string;
+          total_count: number;
+        }>;
+      };
+
+      search_drivers: {
+        Args: {
+          p_search: string | null;
+          p_status_id: number | null;
+          p_limit: number;
+          p_offset: number;
+        };
+        Returns: Array<{
+          driver_id: number;
+          first_name: string;
+          last_name: string;
+          phone_number: string | null;
+          license_type: string | null;
+          cdl_number: string | null;
+          carrier_id: number | null;
+          carrier_company_name: string | null;
+          has_twic_card: boolean;
+          status_id: number;
+          status_name: string;
+          total_count: number;
+        }>;
       };
 
       search_employees: {
@@ -562,42 +803,63 @@ export type Database = {
           load_id: number;
           load_number: string | null;
           load_data: string | null;
-          load_weight: number | null;
+          weight_lbs: number | null;
           rate: number | null;
-          dispatch_fee: number | null;
-          factoring: boolean;
           load_status: string | null;
           paid_status: string | null;
-          picked_up_at: string | null;
-          delivered_at: string | null;
+          factoring: boolean;
           carrier_id: number | null;
           truck_id: number | null;
           driver_id: number | null;
           route_id: number | null;
           cargo_type_id: number | null;
-          dispatcher_id: number | null;
-          status_id: number | null;
-          carrier_name: string | null;
+          picked_up_at: string | null;
+          delivered_at: string | null;
+          carrier_company_name: string | null;
           driver_name: string | null;
           unit_number: string | null;
           miles: number | null;
           cargo_type_name: string | null;
+          dispatch_fee: number;
+          total_count: number;
+        }>;
+      };
+
+      search_trucks: {
+        Args: {
+          p_search: string | null;
+          p_status_id: number;
+          p_limit: number;
+          p_offset: number;
+        };
+        Returns: Array<{
+          truck_id: number;
+          unit_number: string;
+          plate_number: string | null;
+          vin: string | null;
+          truck_name: string;
+          vehicle_type: string | null;
+          capacity: string | null;
+          empty_weight: number | null;
+          operational_status: string | null;
+          carrier_id: number | null;
+          driver_id: number | null;
+          driver_first_name: string | null;
+          driver_last_name: string | null;
+          carrier_company_name: string | null;
+          status_id: number;
+          status_name: string;
           total_count: number;
         }>;
       };
 
       toggle_employee_status: {
-        Args: {
-          p_employee_id: number;
-        };
+        Args: { p_employee_id: number };
         Returns: boolean;
       };
 
       update_employee_role: {
-        Args: {
-          p_employee_id: number;
-          p_role_id: number;
-        };
+        Args: { p_employee_id: number; p_role_id: number };
         Returns: boolean;
       };
     };

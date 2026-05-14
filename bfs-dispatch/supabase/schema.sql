@@ -92,6 +92,8 @@ CREATE TABLE employees (
 
 CREATE TABLE carriers (
     carrier_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    company_name VARCHAR(255) NOT NULL,
+    owner_name VARCHAR(255),
     first_name VARCHAR(255) NOT NULL,
     last_name VARCHAR(255) NOT NULL,
     address VARCHAR(255),
@@ -101,7 +103,11 @@ CREATE TABLE carriers (
     us_department_of_transportation_number VARCHAR(50),
     employer_identification_number VARCHAR(50),
     social_security_number VARCHAR(50),
-    status_id INTEGER REFERENCES record_status(status_id)
+    factoring BOOLEAN DEFAULT FALSE,
+    status_id INTEGER REFERENCES record_status(status_id),
+    mc_number VARCHAR(50),
+    dot_number VARCHAR(50),
+    dispatch_fee_percent NUMERIC(5,4) DEFAULT 0.05
 );
 
 CREATE TABLE drivers (
@@ -267,10 +273,10 @@ INSERT INTO employees (first_name, last_name, role_id, status_id) VALUES
     ('Diana', 'Solano', 2, 1),
     ('Luis', 'Vargas', 3, 1);
 
-INSERT INTO carriers (first_name, last_name, address, phone_number, email, motor_carrier_id, us_department_of_transportation_number, employer_identification_number, social_security_number, status_id) VALUES
-    ('Pedro', 'Cruz', 'Av. 10', '8888-4444', 'pedro@example.com', 'MC123', 'DOT456', 'XX-XXXXXXX', '***-**-****', 1),
-    ('Lucía', 'Valverde', 'Calle 8', '8888-5555', 'lucia@example.com', 'MC124', 'DOT457', 'XX-XXXXXXX', '***-**-****', 1),
-    ('Marco', 'Salas', 'Ruta 32', '8888-6666', 'marco@example.com', 'MC125', 'DOT458', 'XX-XXXXXXX', '***-**-****', 1);
+INSERT INTO carriers (company_name, owner_name, first_name, last_name, address, phone_number, email, motor_carrier_id, us_department_of_transportation_number, employer_identification_number, social_security_number, status_id, mc_number, dispatch_fee_percent) VALUES
+    ('Transportes Pedro Cruz', 'Pedro Cruz', 'Transportes Pedro Cruz', 'Pedro Cruz', 'Av. 10', '8888-4444', 'pedro@example.com', 'MC123', 'DOT456', 'XX-XXXXXXX', '***-**-****', 1, 'MC-123456', 0.05),
+    ('Lucía Valverde Logistics', 'Lucía Valverde', 'Lucía Valverde Logistics', 'Lucía Valverde', 'Calle 8', '8888-5555', 'lucia@example.com', 'MC124', 'DOT457', 'XX-XXXXXXX', '***-**-****', 1, 'MC-124579', 0.06),
+    ('Marco Salas Transport', 'Marco Salas', 'Marco Salas Transport', 'Marco Salas', 'Ruta 32', '8888-6666', 'marco@example.com', 'MC125', 'DOT458', 'XX-XXXXXXX', '***-**-****', 1, 'MC-125841', 0.05);
 
 INSERT INTO trucks (unit_number, vehicle_type, capacity, operational_status, carrier_id, status_id) VALUES
     ('U001', 'Camión', 10, 'Activo', 1, 1),
@@ -527,3 +533,95 @@ CREATE POLICY "Allow authenticated access" ON loads FOR ALL USING (auth.role() =
 CREATE POLICY "Allow authenticated access" ON sales FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Allow authenticated access" ON sales_details FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Allow authenticated access" ON billing FOR ALL USING (auth.role() = 'authenticated');
+
+-- ============================================================
+-- MIGRACIONES POSTERIORES (mantener sincronizado con migration.sql)
+-- ============================================================
+
+-- Columnas adicionales agregadas en migraciones
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS dispatch_vendor VARCHAR(50);
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS auth_user_id UUID REFERENCES auth.users(id);
+ALTER TABLE roles ADD COLUMN IF NOT EXISTS role_type VARCHAR(20) CHECK (role_type IN ('admin', 'dispatcher', 'logistics', 'sales', 'back_office'));
+ALTER TABLE carriers ADD COLUMN IF NOT EXISTS factoring BOOLEAN DEFAULT FALSE;
+ALTER TABLE carriers ADD COLUMN IF NOT EXISTS mc_number VARCHAR(50);
+ALTER TABLE drivers ADD COLUMN IF NOT EXISTS cdl_number VARCHAR(50);
+ALTER TABLE loads ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+
+-- Tablas nuevas
+CREATE TABLE IF NOT EXISTS load_documents (
+    document_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    load_id INTEGER REFERENCES loads(load_id),
+    document_type VARCHAR(20) CHECK (document_type IN ('BOL', 'RC', 'POD')),
+    file_path VARCHAR(500),
+    file_name VARCHAR(255),
+    file_size INTEGER,
+    uploaded_at TIMESTAMPTZ DEFAULT NOW(),
+    uploaded_by INTEGER REFERENCES employees(employee_id)
+);
+
+CREATE TABLE IF NOT EXISTS load_status_history (
+    history_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    load_id INTEGER REFERENCES loads(load_id),
+    old_status VARCHAR(20),
+    new_status VARCHAR(20) NOT NULL,
+    changed_by INTEGER REFERENCES employees(employee_id),
+    changed_at TIMESTAMPTZ DEFAULT NOW(),
+    notes TEXT
+);
+
+-- Secuencia y trigger para load_number atómico
+CREATE SEQUENCE IF NOT EXISTS loads_seq START 1;
+
+CREATE OR REPLACE FUNCTION generate_load_number()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.load_number IS NULL THEN
+        NEW.load_number := 'LD-' || EXTRACT(YEAR FROM NOW()) || '-' || LPAD(nextval('loads_seq')::TEXT, 4, '0');
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS set_load_number ON loads;
+CREATE TRIGGER set_load_number
+    BEFORE INSERT ON loads
+    FOR EACH ROW EXECUTE FUNCTION generate_load_number();
+
+-- Helper function para obtener rol del usuario actual
+CREATE OR REPLACE FUNCTION get_current_user_role()
+RETURNS TABLE(role_type VARCHAR) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT r.role_type
+  FROM employees e
+  JOIN roles r ON e.role_id = r.role_id
+  WHERE e.auth_user_id = auth.uid();
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Vista de analytics de ventas
+CREATE OR REPLACE VIEW v_sales_performance AS
+SELECT 
+  s.sales_id,
+  s.sale_date,
+  s.total_amount,
+  s.total_cost,
+  s.total_profit,
+  s.profit_pct,
+  COALESCE(b.first_name || ' ' || b.last_name, 'Sin Broker') AS broker_name,
+  COALESCE(e.first_name || ' ' || e.last_name, 'Sin Dispatcher') AS dispatcher_name,
+  COALESCE(orig_state.state_name, 'N/A') AS origin_state_name,
+  COALESCE(dest_state.state_name, 'N/A') AS destination_state_name,
+  l.load_number,
+  l.rate,
+  l.dispatch_fee,
+  s.status_id
+FROM sales s
+LEFT JOIN brokers b ON s.broker_id = b.broker_id
+LEFT JOIN employees e ON s.employee_id = e.employee_id
+LEFT JOIN sales_details sd ON s.sales_id = sd.sales_id
+LEFT JOIN loads l ON sd.load_id = l.load_id
+LEFT JOIN addresses orig_addr ON l.origin_address_id = orig_addr.address_id
+LEFT JOIN addresses dest_addr ON l.destination_address_id = dest_addr.address_id
+LEFT JOIN states orig_state ON orig_addr.state_id = orig_state.state_id
+LEFT JOIN states dest_state ON dest_addr.state_id = dest_state.state_id;

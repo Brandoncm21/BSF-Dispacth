@@ -15,9 +15,9 @@ npm run dev       # dev server (localhost:3000)
 npm run build     # production build
 npm run start     # start production server
 npm run lint      # eslint (next/core-web-vitals + typescript)
+npm run test      # vitest run (unit + integration tests)
+npm run test:watch  # vitest watch mode
 ```
-
-No test framework is configured.
 
 ## Route Structure (Route Groups)
 
@@ -36,21 +36,66 @@ No test framework is configured.
 - Roles defined in `config/roles.ts`: admin, back_office, dispatcher, logistics, sales
 - Role stored in DB: `employees.role_id` → `roles.role_type`
 - `get_user_role_type()` RPC (SECURITY DEFINER) — single source of truth for role checks, bypasses RLS
-- `middleware.ts` — checks role via RPC; redirects to `/login?error=No role assigned` if no role, or `/dashboard?denied=1` if no access
+- `middleware.ts` — uses `@supabase/ssr` Edge pattern (`request.cookies`, `response.cookies`); checks role via `get_user_role_type()` RPC
 - `hooks/use-has-access.ts` — `useHasAccess(module)` and `useUserRole()` hooks fetch role from DB
 - `components/sidebar.tsx` — nav items filtered by role; hidden on `/login`
 - `components/header.tsx` — sticky header with logo → `/dashboard` and home button; hidden on `/login`
 - **Staff Management** (`/dashboard/human-resources`) — admin only: list employees, edit roles, toggle status
 
-## Supabase
+## Supabase Client Pattern
 
-- Auth via `@supabase/ssr` cookie-based sessions
-- Env vars: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (see `.env.local`, gitignored)
-- Schema in `supabase/schema.sql` (base) + `supabase/migration.sql` (ALTERs) + `supabase/rbac-migration.sql` (RBAC, triggers, RPCs)
-- **RLS is role-based**: employees/roles read for all authenticated, write for admin only; loads filtered by dispatcher_id or admin; sales/billing admin only
-- **Status pattern**: `status_id` 1=Activo, 2=Inactivo, 3=Pendiente (from `record_status` seed)
-- **Auth trigger** `handle_new_user()` — auto-creates employee record on signup, reads role from `user_metadata.role`
-- **Schema drift**: `supabase/schema.sql` is stale. Always verify against live DB or migration files before writing queries.
+**3 client factories only — no inline creation:**
+
+| Factory | File | When to Use |
+|---------|------|-------------|
+| `createSupabaseServerClient()` | `lib/supabase-server.ts` | Server Components, server actions (no auth check) |
+| `createSupabaseBrowserClient()` | `lib/supabase-browser.ts` | Client Components (browser-side queries, RPCs) |
+| `getSupabaseServerClient()` | `lib/actions/core.ts` | Server actions (includes auth check — throws if no user) |
+| Inline `createServerClient()` | `middleware.ts` | Edge Runtime (must use `request.cookies` API) |
+
+**Legacy** `lib/supabase.ts` exists for backward compatibility — do NOT import from it in new code.
+
+## Server Actions
+
+All server actions live in `lib/actions/` directory:
+
+```
+lib/actions/
+├── core.ts       — getSupabaseServerClient() helper
+├── loads.ts      — createLoad, updateLoad, deleteLoad, updateLoadStatus
+├── catalog.ts    — getStates, cities, carriers, drivers, roles CRUD
+├── routes.ts     — route CRUD, getOrCreate operations
+├── documents.ts  — document upload/download/delete
+├── sales.ts      — getSalesAnalytics
+└── fleet.ts      — fleet tracking, truck CRUD, broker CRUD
+```
+
+**Barrel file:** `lib/actions.ts` re-exports everything. Import from `@/lib/actions` as before.
+
+## Error Handling
+
+- `lib/errors.ts` — `AppError` class (extends `Error`) with optional `code` and `field` properties
+- `components/error-boundary.tsx` — React Error Boundary for client components
+- `hooks/use-api-error.ts` — `useApiError()` hook for client-side error state
+- All server actions throw errors; client components catch with `try/catch`
+
+## Testing
+
+- Vitest v4 with jsdom environment
+- Tests live alongside source files: `*.test.ts`, `*.test.tsx`
+- Run `npm test` or `npx vitest run`
+
+## Database Schema
+
+- `supabase/schema.sql` — base schema (CREATE TABLEs, seed data, views)
+- `supabase/migration.sql` — ALTER TABLEs, new tables, RLS policies, load_number sequence
+- `supabase/rbac-migration.sql` — RBAC system (role types, auth trigger, RPCs)
+- `supabase/rls-cleanup-migration.sql` — fixed overly permissive policies
+- `supabase/storage-policies-migration.sql` — storage bucket policies
+- `supabase/create-route-function-migration.sql` — SQL functions for atomic route creation
+- `supabase/indexes-timestamptz-migration.sql` — 19 FK indexes + TIMESTAMPTZ fix
+- `supabase/view-update-migration.sql` — updated trucks_with_availability view
+- **Schema drift**: `schema.sql` is now synced with live DB (added missing tables, columns, triggers, views)
 
 ## Key conventions
 
@@ -58,12 +103,14 @@ No test framework is configured.
 - **Zod v4** for validation — breaking changes from v3
 - **Soft deletes**: set `status_id = 2` (Inactivo) instead of hard delete
 - **Pagination**: 16 records/page across all list pages. Use `PaginationControls` + `TableSkeleton` components
-- **`loads` page**: uses direct browser Supabase client + `search_loads` RPC, not server actions
+- **`loads` page**: uses `useLoads()` hook with browser Supabase client + `search_loads` RPC for reactive UX; mutations via server actions
 - **New user setup**: after creating a user in Supabase Auth, ensure an `employees` record exists with `auth_user_id` linked and a valid `role_id`
+- **`load_number` generation**: uses `loads_seq` PostgreSQL sequence + trigger (atomic, no race condition)
+- **`dispatch_fee`**: always computed server-side from `dispatch_fee_pct * rate / 100`
 
-## What's missing
+## What's still missing
 
-- No test framework
-- No CI/CD pipeline
-- No database migration tooling (raw SQL files only)
-- No TypeScript types generated from Supabase schema
+- Database migration tooling (raw SQL files only)
+- TypeScript types generated from Supabase schema (current `types/database.types.ts` is manually maintained)
+- Integration tests for server actions (Vitest + MSW not yet configured for API mocking)
+- E2E tests (Playwright not installed)

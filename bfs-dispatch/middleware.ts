@@ -1,6 +1,5 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
 import { ROLE_PERMISSIONS, type RoleType } from "@/config/roles";
 
 const protectedPaths = [
@@ -39,21 +38,31 @@ async function getUserRoleFromDB(
   return data as RoleType;
 }
 
-export async function middleware(request: Request) {
-  const { pathname } = new URL(request.url);
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  let response = NextResponse.next({ request });
 
   if (!protectedPaths.some((path) => pathname.startsWith(path))) {
-    return NextResponse.next();
+    return response;
   }
 
-  const cookieStore = await cookies();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
         getAll() {
-          return cookieStore.getAll();
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          );
+          response = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          );
         },
       },
     }
@@ -65,26 +74,29 @@ export async function middleware(request: Request) {
   } = await supabase.auth.getUser();
 
   if (error || !user) {
-    const redirectUrl = new URL("/login", request.url);
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = "/login";
     redirectUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(redirectUrl);
   }
 
   const dbRole = await getUserRoleFromDB(supabase);
   if (!dbRole) {
-    const redirectUrl = new URL("/login", request.url);
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = "/login";
     redirectUrl.searchParams.set("error", "No role assigned");
     return NextResponse.redirect(redirectUrl);
   }
 
   const restrictedModule = getRouteModule(pathname);
   if (restrictedModule && !hasModuleAccess(dbRole, restrictedModule)) {
-    const redirectUrl = new URL("/dashboard", request.url);
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = "/dashboard";
     redirectUrl.searchParams.set("denied", "1");
     return NextResponse.redirect(redirectUrl);
   }
 
-  return NextResponse.next();
+  return response;
 }
 
 export const config = {

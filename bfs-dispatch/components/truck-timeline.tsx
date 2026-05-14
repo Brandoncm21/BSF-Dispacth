@@ -77,11 +77,6 @@ export function TruckTimeline({ truckId, unitNumber, history }: TruckTimelinePro
                     <div className="text-sm font-medium">
                       ${Number(load.rate).toLocaleString("es-CR", { minimumFractionDigits: 2 })}
                     </div>
-                    {load.dispatch_fee > 0 && (
-                      <div className="text-xs text-emerald-600 dark:text-emerald-400">
-                        +${Number(load.dispatch_fee).toLocaleString("es-CR", { minimumFractionDigits: 2 })} profit
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>

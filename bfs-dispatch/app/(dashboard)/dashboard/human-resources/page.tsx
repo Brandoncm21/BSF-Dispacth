@@ -1,36 +1,20 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createBrowserClient } from "@supabase/ssr";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import {
-  Search,
-  Loader2,
-  X,
-  UserCog,
-  Power,
-  Shield,
-} from "lucide-react";
+import { Search, Loader2, X, UserCog, Power, Shield } from "lucide-react";
 import { PaginationControls } from "@/components/pagination-controls";
 import { TableSkeleton } from "@/components/table-skeleton";
 import { useHasAccess } from "@/hooks/use-has-access";
+import { getRoles } from "@/lib/actions";
+import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 
-const supabase = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+const supabase = createSupabaseBrowserClient();
 
 type Employee = {
   employee_id: number;
@@ -100,15 +84,10 @@ export default function HumanResourcesPage() {
   }
 
   async function fetchRoles() {
-    const { data, error } = await supabase
-      .from("roles")
-      .select("role_id, role_name, role_type")
-      .eq("status_id", 1)
-      .order("role_name");
-
-    if (!error && data) {
+    try {
+      const data = await getRoles();
       setRoles(data as Role[]);
-    }
+    } catch { /* ignore */ }
   }
 
   async function handleToggleStatus(employeeId: number) {
