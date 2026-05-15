@@ -4,13 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { logout } from "@/lib/auth-actions";
-import { supabase } from "@/lib/supabase";
 import { useUserRole } from "@/hooks/use-has-access";
 import {
   getAccessibleModules,
   MODULE_ROUTE_MAP,
   ROLE_PERMISSIONS,
-  type RoleType,
 } from "@/config/roles";
 import {
   LayoutDashboard,
@@ -58,11 +56,6 @@ interface NavItem {
 
 export function Sidebar() {
   const pathname = usePathname();
-
-  if (pathname === "/" || pathname?.startsWith("/login")) {
-    return null;
-  }
-
   const { role: userRole, loading } = useUserRole();
   const [navItems, setNavItems] = useState<NavItem[]>([]);
 
@@ -83,6 +76,10 @@ export function Sidebar() {
 
     setNavItems(items);
   }, [userRole]);
+
+  if (pathname === "/" || pathname?.startsWith("/login")) {
+    return null;
+  }
 
   async function handleLogout() {
     await logout();

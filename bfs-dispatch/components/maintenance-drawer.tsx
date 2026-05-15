@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Plus, Wrench, AlertTriangle, Calendar, DollarSign } from "lucide-react";
-import { TruckWithSmartStatus, getMaintenanceRecords, createMaintenanceRecord, updateMaintenanceRecord, deleteMaintenanceRecord } from "@/lib/actions";
+import { TruckWithSmartStatus, getMaintenanceRecords, createMaintenanceRecord, deleteMaintenanceRecord } from "@/lib/actions";
 import { cn } from "@/lib/utils";
 
 const MAINTENANCE_TYPES = [
@@ -144,7 +144,7 @@ export function MaintenanceDrawer({ open, onOpenChange, truck }: MaintenanceDraw
             <Alert variant="default" className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
               <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               <AlertDescription className="text-amber-700 dark:text-amber-400 text-sm">
-                Este camión está marcado como "En mantenimiento"
+                Este camión está marcado como &quot;En mantenimiento&quot;
               </AlertDescription>
             </Alert>
           )}

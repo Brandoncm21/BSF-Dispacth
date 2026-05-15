@@ -61,6 +61,7 @@ export function useLoads() {
     if (reqRes.data) setRequirements(reqRes.data.map((r) => ({ id: r.special_requirements_id, label: r.requirement_description })));
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     fetchLoads();
     fetchSelectOptions();

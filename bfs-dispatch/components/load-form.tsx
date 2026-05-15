@@ -8,7 +8,7 @@ import { RouteSelector } from "@/components/route-selector";
 import { CreatableSelect } from "@/components/creatable-select";
 import { TruckSelector } from "@/components/truck-selector";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
-import { getDriversByCarrier, getTrucksByCarrier } from "@/lib/actions";
+import { getDriversByCarrier } from "@/lib/actions";
 import { LOAD_STATUS, LOAD_STATUS_LABELS, PAID_STATUS } from "@/lib/constants";
 import { loadSchema, LoadForm as LoadFormType, SelectOption, LoadFormSubmitData, MAX_FILE_SIZE } from "@/types/load";
 
@@ -36,7 +36,7 @@ export const LoadForm = forwardRef<LoadFormHandle, LoadFormProps>(function LoadF
   onSubmit,
   isLoading: _isLoading,
   carriers,
-  trucks,
+  trucks: _trucks,
   drivers,
   cargoTypes,
   requirements,

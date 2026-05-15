@@ -5,7 +5,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -44,62 +43,6 @@ export function NewRouteModal({ open, onOpenChange, onRouteCreated }: NewRouteMo
   const [destStreets, setDestStreets] = useState<StreetOption[]>([]);
   const [originStreetSearch, setOriginStreetSearch] = useState("");
   const [destStreetSearch, setDestStreetSearch] = useState("");
-
-  const [origin, setOrigin] = useState<AddressForm>({
-    stateId: null,
-    cityId: null,
-    cityInputMode: "select",
-    customCityName: "",
-    streetId: null,
-    streetInputMode: "select",
-    customStreetName: "",
-  });
-
-  const [destination, setDestination] = useState<AddressForm>({
-    stateId: null,
-    cityId: null,
-    cityInputMode: "select",
-    customCityName: "",
-    streetId: null,
-    streetInputMode: "select",
-    customStreetName: "",
-  });
-
-  const [miles, setMiles] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [step, setStep] = useState<"origin" | "destination" | "confirm">("origin");
-
-  useEffect(() => {
-    if (open) {
-      fetchStates();
-      resetForm();
-    }
-  }, [open]);
-
-  useEffect(() => {
-    if (origin.stateId) {
-      fetchCities(origin.stateId, "origin");
-    }
-  }, [origin.stateId]);
-
-  useEffect(() => {
-    if (origin.cityId && origin.cityInputMode === "select") {
-      searchOriginStreets(originStreetSearch);
-    }
-  }, [origin.cityId, origin.cityInputMode, originStreetSearch]);
-
-  useEffect(() => {
-    if (destination.stateId) {
-      fetchCities(destination.stateId, "destination");
-    }
-  }, [destination.stateId]);
-
-  useEffect(() => {
-    if (destination.cityId && destination.cityInputMode === "select") {
-      searchDestStreets(destStreetSearch);
-    }
-  }, [destination.cityId, destination.cityInputMode, destStreetSearch]);
 
   async function fetchStates() {
     try {
@@ -142,6 +85,64 @@ export function NewRouteModal({ open, onOpenChange, onRouteCreated }: NewRouteMo
       setDestStreets([]);
     }
   }
+
+  const [origin, setOrigin] = useState<AddressForm>({
+    stateId: null,
+    cityId: null,
+    cityInputMode: "select",
+    customCityName: "",
+    streetId: null,
+    streetInputMode: "select",
+    customStreetName: "",
+  });
+
+  const [destination, setDestination] = useState<AddressForm>({
+    stateId: null,
+    cityId: null,
+    cityInputMode: "select",
+    customCityName: "",
+    streetId: null,
+    streetInputMode: "select",
+    customStreetName: "",
+  });
+
+  const [miles, setMiles] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [step, setStep] = useState<"origin" | "destination" | "confirm">("origin");
+
+  useEffect(() => {
+    if (open) {
+      fetchStates();
+      resetForm();
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (origin.stateId) {
+      fetchCities(origin.stateId, "origin");
+    }
+  }, [origin.stateId]);
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => {
+    if (origin.cityId && origin.cityInputMode === "select") {
+      searchOriginStreets(originStreetSearch);
+    }
+  }, [origin.cityId, origin.cityInputMode, originStreetSearch]);
+
+  useEffect(() => {
+    if (destination.stateId) {
+      fetchCities(destination.stateId, "destination");
+    }
+  }, [destination.stateId]);
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => {
+    if (destination.cityId && destination.cityInputMode === "select") {
+      searchDestStreets(destStreetSearch);
+    }
+  }, [destination.cityId, destination.cityInputMode, destStreetSearch]);
 
   function resetForm() {
     setOrigin({

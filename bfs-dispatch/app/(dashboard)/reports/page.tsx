@@ -57,38 +57,6 @@ export default function ReportsPage() {
   const [error, setError] = useState<string | null>(null);
   const [monthFilter, setMonthFilter] = useState(new Date().toISOString().slice(0, 7));
 
-  useEffect(() => {
-    fetchData();
-  }, [monthFilter]);
-
-  async function fetchData() {
-    setLoading(true);
-    const startDate = `${monthFilter}-01`;
-    const lastDay = new Date(new Date(startDate).getFullYear(), new Date(startDate).getMonth() + 1, 0).getDate();
-    const endDate = `${monthFilter}-${String(lastDay).padStart(2, "0")}`;
-
-    const { data: loadsData, error: loadsError } = await supabase
-      .from("loads")
-      .select(`
-        load_id, load_number, load_data, weight_lbs, rate, dispatch_fee, load_status, paid_status, created_at,
-        carriers(company_name, owner_name),
-        drivers(first_name, last_name),
-        routes(miles),
-        cargo_types(cargo_type_name)
-      `)
-      .gte("booked_at", startDate)
-      .lte("booked_at", endDate);
-
-    if (loadsError) {
-      setError(loadsError.message);
-    } else {
-      setLoads(loadsData as unknown as LoadData[]);
-      processWeeklyData(loadsData as unknown as LoadData[]);
-      processCarrierRPM(loadsData as unknown as LoadData[]);
-    }
-    setLoading(false);
-  }
-
   function processWeeklyData(loadsData: LoadData[]) {
     const weeks: Record<string, { loads: number; revenue: number }> = {};
     loadsData.forEach((load) => {
@@ -124,6 +92,39 @@ export default function ReportsPage() {
       .sort((a, b) => b.avg_rpm - a.avg_rpm);
     setCarrierRPM(result);
   }
+
+  async function fetchData() {
+    setLoading(true);
+    const startDate = `${monthFilter}-01`;
+    const lastDay = new Date(new Date(startDate).getFullYear(), new Date(startDate).getMonth() + 1, 0).getDate();
+    const endDate = `${monthFilter}-${String(lastDay).padStart(2, "0")}`;
+
+    const { data: loadsData, error: loadsError } = await supabase
+      .from("loads")
+      .select(`
+        load_id, load_number, load_data, weight_lbs, rate, dispatch_fee, load_status, paid_status, created_at,
+        carriers(company_name, owner_name),
+        drivers(first_name, last_name),
+        routes(miles),
+        cargo_types(cargo_type_name)
+      `)
+      .gte("booked_at", startDate)
+      .lte("booked_at", endDate);
+
+    if (loadsError) {
+      setError(loadsError.message);
+    } else {
+      setLoads(loadsData as unknown as LoadData[]);
+      processWeeklyData(loadsData as unknown as LoadData[]);
+      processCarrierRPM(loadsData as unknown as LoadData[]);
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    fetchData();
+  }, [monthFilter]);
 
   function exportCSV() {
     const headers = ["Load#", "Carrier", "Driver", "Cargo", "Miles", "Rate", "Dispatch Fee", "$/Mile", "Status"];

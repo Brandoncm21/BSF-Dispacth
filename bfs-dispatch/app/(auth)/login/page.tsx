@@ -13,7 +13,7 @@ import { Loader2, Truck, ShieldAlert } from "lucide-react";
 function LoginForm() {
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const denied = searchParams.get("denied");

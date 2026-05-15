@@ -68,6 +68,7 @@ export function TruckFormSheet({ open, onOpenChange, truck, onSuccess }: TruckFo
     fetchCarriers();
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     if (form.carrier_id) {
       async function fetchDriversForCarrier() {
@@ -85,6 +86,7 @@ export function TruckFormSheet({ open, onOpenChange, truck, onSuccess }: TruckFo
     }
   }, [form.carrier_id]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     if (truck) {
       setForm({
