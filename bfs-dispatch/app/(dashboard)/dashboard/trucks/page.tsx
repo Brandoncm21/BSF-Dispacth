@@ -1,19 +1,35 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Edit2, Loader2, Grid, List, Wrench, ChevronDown, ChevronUp, Truck as TruckIcon } from "lucide-react";
+import { Plus, Edit2, Grid, List, Wrench, ChevronDown, ChevronUp, Truck as TruckIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { TruckStatusBadge } from "@/components/truck-status-badge";
 import { TruckFormSheet } from "@/components/truck-form-sheet";
 import { MaintenanceDrawer } from "@/components/maintenance-drawer";
-import { searchTrucks as searchTrucksAction, getTruckLoadHistory, TruckWithSmartStatus, getDriversByCarrier } from "@/lib/actions";
+import { searchTrucks as searchTrucksAction, getTruckLoadHistory, TruckWithSmartStatus, TruckLoadHistory } from "@/lib/actions";
 import { cn } from "@/lib/utils";
-import { PaginationControls } from "@/components/pagination-controls";
 import { TableSkeleton } from "@/components/table-skeleton";
+import { PaginationControls } from "@/components/pagination-controls";
 
-function mapTruckData(raw: any): TruckWithSmartStatus {
+type TruckSearchResult = {
+  truck_id: number;
+  unit_number: string;
+  vehicle_type: string;
+  operational_status: string;
+  carrier_id: number;
+  carrier_company_name: string;
+  plate_number: string | null;
+  vin: string | null;
+  truck_name: string | null;
+  empty_weight: number | null;
+  driver_id: number | null;
+  driver_first_name: string | null;
+  driver_last_name: string | null;
+};
+
+function mapTruckData(raw: TruckSearchResult): TruckWithSmartStatus {
   const opStatus = raw.operational_status?.toLowerCase() || "";
   let smartStatus: "active" | "inactive" | "maintenance" | "in_route" = "inactive";
   let statusReason = "Sin asignar";
@@ -38,8 +54,8 @@ function mapTruckData(raw: any): TruckWithSmartStatus {
     carrier_name: raw.carrier_company_name || "N/A",
     smart_status: smartStatus,
     status_reason: statusReason,
-    current_load_id: raw.current_load_id || null,
-    current_load_number: raw.current_load_number || null,
+    current_load_id: null,
+    current_load_number: null,
     plate_number: raw.plate_number || null,
     vin: raw.vin || null,
     truck_name: raw.truck_name || null,
@@ -62,7 +78,7 @@ export default function TrucksPage() {
   const [viewMode, setViewMode] = useState<"table" | "cards">("table");
   const [maintenanceTruck, setMaintenanceTruck] = useState<TruckWithSmartStatus | null>(null);
   const [expandedTrucks, setExpandedTrucks] = useState<Set<number>>(new Set());
-  const [truckHistory, setTruckHistory] = useState<Record<number, any[]>>({});
+  const [truckHistory, setTruckHistory] = useState<Record<number, TruckLoadHistory[]>>({});
 
   const fetchTrucks = useCallback(async () => {
     setLoading(true);
@@ -295,7 +311,7 @@ function TruckCard({
 }: {
   truck: TruckWithSmartStatus;
   isExpanded: boolean;
-  history: any[];
+  history: TruckLoadHistory[];
   onToggleHistory: () => void;
   onEdit: () => void;
   onMaintenance: () => void;

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { getSalesAnalytics, SalesByMonth, SalesByBroker, SalesByState } from "@/lib/actions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, TrendingUp, DollarSign, MapPin, Users } from "lucide-react";
+import { Loader2, TrendingUp, DollarSign, Users } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -26,12 +26,7 @@ export function SalesAnalyticsDashboard() {
   const [salesByMonth, setSalesByMonth] = useState<SalesByMonth[]>([]);
   const [salesByBroker, setSalesByBroker] = useState<SalesByBroker[]>([]);
   const [salesByOriginState, setSalesByOriginState] = useState<SalesByState[]>([]);
-  const [salesByDestState, setSalesByDestState] = useState<SalesByState[]>([]);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetchAnalytics();
-  }, []);
 
   async function fetchAnalytics() {
     setLoading(true);
@@ -40,13 +35,16 @@ export function SalesAnalyticsDashboard() {
       setSalesByMonth(data.salesByMonth);
       setSalesByBroker(data.salesByBroker);
       setSalesByOriginState(data.salesByOriginState);
-      setSalesByDestState(data.salesByDestState);
     } catch (e) {
       setError("Error cargando analítica");
     } finally {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, []);
 
   const totalProfit = salesByMonth.reduce((sum, m) => sum + m.total_profit, 0);
   const totalRevenue = salesByMonth.reduce((sum, m) => sum + m.total_revenue, 0);

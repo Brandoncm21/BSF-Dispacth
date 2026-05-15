@@ -25,11 +25,6 @@ export function LoadDocsDialog({ open, onOpenChange, loadId }: LoadDocsDialogPro
   const [docUrls, setDocUrls] = useState<Record<number, string>>({});
   const [uploadError, setUploadError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!open || !loadId) return;
-    loadDocs(loadId);
-  }, [open, loadId]);
-
   async function loadDocs(id: number) {
     setLoadingDocs(true);
     setDocUrls({});
@@ -51,6 +46,11 @@ export function LoadDocsDialog({ open, onOpenChange, loadId }: LoadDocsDialogPro
       setLoadingDocs(false);
     }
   }
+
+  useEffect(() => {
+    if (!open || !loadId) return;
+    loadDocs(loadId);
+  }, [open, loadId]);
 
   async function handleDeleteDoc(documentId: number, filePath: string) {
     if (!confirm("¿Eliminar este documento?")) return;

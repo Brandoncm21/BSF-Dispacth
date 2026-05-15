@@ -110,7 +110,7 @@ export default function CarriersPage() {
     setLoading(false);
   }, [search, statusFilter, page]);
 
-  useEffect(() => {
+useEffect(() => {
     fetchCarriers();
   }, [fetchCarriers]);
 
@@ -141,18 +141,28 @@ export default function CarriersPage() {
     setDialogOpen(true);
   }
 
+  async function handleDelete(id: number) {
+    if (!confirm("¿Estás seguro de eliminar este carrier?")) return;
+    try {
+      await softDeleteCarrier(id);
+      await fetchCarriers();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error al eliminar carrier");
+    }
+  }
+
   async function handleSubmit() {
     setFormLoading(true);
     setFormErrors({});
 
     const result = carrierSchema.safeParse(form);
     if (!result.success) {
-      const errors: Record<string, string> = {};
-      result.error.issues.forEach((issue) => {
-        const key = String(issue.path[0]);
-        errors[key] = issue.message;
-      });
-      setFormErrors(errors);
+      const errors = result.error.flatten().fieldErrors;
+      setFormErrors(
+        Object.fromEntries(
+          Object.entries(errors).map(([field, messages]) => [field, messages?.[0] || "Invalid value"])
+        ) as Record<string, string>
+      );
       setFormLoading(false);
       return;
     }
@@ -163,26 +173,13 @@ export default function CarriersPage() {
       } else {
         await createCarrier(result.data);
       }
+      await fetchCarriers();
       setDialogOpen(false);
-      fetchCarriers();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error al guardar carrier");
     }
     setFormLoading(false);
   }
-
-  async function handleDelete(carrierId: number) {
-    if (!confirm("¿Estás seguro de eliminar este carrier?")) return;
-
-    try {
-      await softDeleteCarrier(carrierId);
-      fetchCarriers();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Error al eliminar carrier");
-    }
-  }
-
-  const totalPages = Math.ceil(total / perPage);
 
   return (
     <div className="p-8">
@@ -338,7 +335,7 @@ export default function CarriersPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid grid-cols-2 gap-4 py-4">
+          <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="grid grid-cols-2 gap-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="company_name">Nombre de Empresa *</Label>
               <Input
@@ -444,7 +441,7 @@ export default function CarriersPage() {
               />
               <Label htmlFor="factoring">Usa Factoring</Label>
             </div>
-          </div>
+          </form>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={formLoading}>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/lib/supabase";
 import { TruckBadge } from "@/components/truck-badge";
 import { TruckTimeline } from "@/components/truck-timeline";
 import { FleetAlerts } from "@/components/fleet-alerts";
@@ -41,7 +40,6 @@ export default function TraceabilityPage() {
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData();
   }, [fetchData]);
 

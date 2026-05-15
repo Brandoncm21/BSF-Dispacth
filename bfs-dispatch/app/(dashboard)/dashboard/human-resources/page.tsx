@@ -13,6 +13,7 @@ import { TableSkeleton } from "@/components/table-skeleton";
 import { useHasAccess } from "@/hooks/use-has-access";
 import { getRoles } from "@/lib/actions";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
+import { cn } from "@/lib/utils";
 
 const supabase = createSupabaseBrowserClient();
 
@@ -54,6 +55,7 @@ export default function HumanResourcesPage() {
   const [selectedRole, setSelectedRole] = useState<number | null>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     fetchEmployees();
     fetchRoles();
   }, [search, statusFilter, page]);
@@ -354,8 +356,4 @@ export default function HumanResourcesPage() {
       </Dialog>
     </div>
   );
-}
-
-function cn(...classes: (string | boolean | undefined | null)[]) {
-  return classes.filter(Boolean).join(" ");
 }

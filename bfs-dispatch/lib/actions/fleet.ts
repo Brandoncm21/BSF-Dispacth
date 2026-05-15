@@ -63,6 +63,26 @@ export interface TruckWithSmartStatus {
   driver_last_name: string | null;
 }
 
+export interface TruckSearchRow {
+  truck_id: number;
+  unit_number: string;
+  vehicle_type: string;
+  capacity: string | null;
+  operational_status: string;
+  carrier_id: number;
+  carrier_company_name: string;
+  plate_number: string | null;
+  vin: string | null;
+  truck_name: string | null;
+  empty_weight: number | null;
+  driver_id: number | null;
+  driver_first_name: string | null;
+  driver_last_name: string | null;
+  status_id: number;
+  status_name: string | null;
+  total_count?: number;
+}
+
 export interface MaintenanceRecord {
   maintenance_id: number;
   truck_id: number;
@@ -415,9 +435,9 @@ export async function searchTrucks(
     console.error("[searchTrucks]", error.message, error.hint);
     throw error;
   }
-  const rows = data || [];
+  const rows = (data || []) as TruckSearchRow[];
   const total = rows.length > 0 ? Number(rows[0].total_count) : 0;
-  const mapped = rows.map((r: Record<string, unknown>) => ({
+  const mapped = rows.map((r) => ({
     truck_id: r.truck_id,
     unit_number: r.unit_number,
     plate_number: r.plate_number,

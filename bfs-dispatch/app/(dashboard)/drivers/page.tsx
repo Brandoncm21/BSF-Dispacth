@@ -15,12 +15,11 @@ import {
 } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Label } from "@/components/ui/label";
-import { Search, Plus, Edit2, Trash2, Loader2, X, User, MapPin, Clock, Truck as TruckIcon } from "lucide-react";
+import { Search, Plus, Edit2, Trash2, Loader2, X, User, MapPin, Clock } from "lucide-react";
 import { z } from "zod";
 import { PaginationControls } from "@/components/pagination-controls";
 import { TableSkeleton } from "@/components/table-skeleton";
 import { searchDrivers, createDriver, updateDriver, softDeleteDriver, getActiveCarriers, getTruckLoadHistory } from "@/lib/actions";
-import { cn } from "@/lib/utils";
 
 const driverSchema = z.object({
   first_name: z.string().min(1, "Nombre es requerido"),
@@ -135,7 +134,6 @@ export default function DriversPage() {
     setLoadingHistory(true);
     try {
       const driverLoads = await getTruckLoadHistory(driver.carrier_id, 30);
-      const filteredLoads = driverLoads.filter((l: any) => l.driver_id === driver.driver_id || l.driver_id === null);
       setDriverHistory(driverLoads.slice(0, 5) as DriverHistoryItem[]);
     } catch (e) {
       console.error("Error fetching driver history:", e);
@@ -220,10 +218,6 @@ export default function DriversPage() {
 
   function getCarrierName(carrier: Driver["carriers"]) {
     return carrier?.company_name || (carrier?.first_name ? `${carrier.first_name} ${carrier.last_name}` : "—");
-  }
-
-  function isDriverBusy(driver: Driver) {
-    return driverHistory.some(h => h.driver_id === driver.driver_id && h.load_status !== "delivered");
   }
 
   return (

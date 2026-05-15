@@ -32,26 +32,11 @@ export function AddressModal({ open, onOpenChange, onAddressCreated }: AddressMo
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (open) {
-      fetchStates();
-    }
-  }, [open]);
-
-  useEffect(() => {
-    if (selectedState) {
-      fetchCities(selectedState);
-    } else {
-      setCities([]);
-      setSelectedCity(null);
-    }
-  }, [selectedState]);
-
   async function fetchStates() {
     try {
       const data = await getStates();
       setStates(data);
-    } catch (e) {
+    } catch {
       setError("Error cargando estados");
     }
   }
@@ -60,10 +45,26 @@ export function AddressModal({ open, onOpenChange, onAddressCreated }: AddressMo
     try {
       const data = await getCities(stateId);
       setCities(data);
-    } catch (e) {
+    } catch {
       setError("Error cargando ciudades");
     }
   }
+
+  useEffect(() => {
+    if (open) {
+      fetchStates();
+    }
+  }, [open]);
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => {
+    if (selectedState) {
+      fetchCities(selectedState);
+    } else {
+      setCities([]);
+      setSelectedCity(null);
+    }
+  }, [selectedState]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

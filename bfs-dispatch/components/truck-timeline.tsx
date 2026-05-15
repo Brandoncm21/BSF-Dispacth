@@ -1,6 +1,5 @@
 "use client";
 
-import { TruckBadge } from "@/components/truck-badge";
 import { TruckLoadHistory } from "@/lib/actions";
 import { MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -42,7 +41,7 @@ export function TruckTimeline({ truckId, unitNumber, history }: TruckTimelinePro
         <div className="absolute left-4 top-0 bottom-0 w-px bg-zinc-200 dark:bg-zinc-700" />
 
         <div className="space-y-4">
-          {history.map((load, index) => (
+          {history.map((load) => (
             <div key={load.load_id} className="relative pl-10">
               <div className="absolute left-3 top-1.5 h-2.5 w-2.5 rounded-full bg-zinc-400 dark:bg-zinc-600 border-2 border-white dark:border-zinc-950" />
 

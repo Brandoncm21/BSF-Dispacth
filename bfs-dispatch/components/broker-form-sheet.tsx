@@ -36,6 +36,7 @@ export function BrokerFormSheet({ open, onOpenChange, broker, onSuccess }: Broke
 
   const isEditing = !!broker;
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     if (broker) {
       setForm({
