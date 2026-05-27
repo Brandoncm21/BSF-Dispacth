@@ -116,3 +116,4 @@ lib/actions/
 - E2E tests (Playwright not installed)
 
 - 2026-05-26: Fixed timezone bug in reports.ts, analytics.ts — getDateRange now accepts client tzOffsetMinutes, formats ISO strings with timezone offset, filters on raw TIMESTAMPTZ without ::date cast. Fixed get_truck_load_history INNER JOIN → LEFT JOIN. Added idx_loads_effective_date expression index.
+- 2026-05-26: Created Executive Dashboard (/dashboard/executive) with 13 preset period filters, YoY comparison for quarterly/semestral/annual, KPI cards with sparklines (Recharts AreaChart 60px), Revenue vs Profit bar chart, period selector dropdown, print CSS for US Letter PDF export, and v_executive_bi_metrics view. Restricted to admin, back_office, sales roles.
