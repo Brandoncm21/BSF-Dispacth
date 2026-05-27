@@ -71,9 +71,19 @@ export type {
 } from "./actions/sales";
 
 export {
+  getReportsData,
+} from "./actions/reports";
+
+export type {
+  ReportRow,
+  GroupedReport,
+} from "./actions/reports";
+
+export {
   getTruckById,
   getTrucksWithAvailability,
   getTruckLoadHistory,
+  getTruckStatusHistory,
   getFleetOverview,
   getFleetAlerts,
   getTrucksWithSmartStatus,
@@ -102,6 +112,7 @@ export type {
   AvailabilityStatus,
   TruckWithAvailability,
   TruckLoadHistory,
+  StatusHistoryEvent,
   FleetAlert,
   TruckStatus,
   TruckWithSmartStatus,

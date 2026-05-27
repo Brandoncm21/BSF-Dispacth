@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { TruckBadge } from "@/components/truck-badge";
 import { TruckTimeline } from "@/components/truck-timeline";
 import { FleetAlerts } from "@/components/fleet-alerts";
-import { getFleetOverview, getFleetAlerts, getTruckLoadHistory, TruckWithAvailability, FleetAlert, TruckLoadHistory } from "@/lib/actions";
+import { getFleetOverview, getFleetAlerts, getTruckLoadHistory, getTruckStatusHistory, TruckWithAvailability, FleetAlert, TruckLoadHistory, StatusHistoryEvent } from "@/lib/actions";
 import { ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +17,7 @@ export default function TraceabilityPage() {
   const [expandedCarrier, setExpandedCarrier] = useState<string | null>(null);
   const [selectedTruck, setSelectedTruck] = useState<number | null>(null);
   const [truckHistory, setTruckHistory] = useState<TruckLoadHistory[]>([]);
+  const [statusHistory, setStatusHistory] = useState<StatusHistoryEvent[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
   const fetchData = useCallback(async () => {
@@ -47,8 +48,12 @@ export default function TraceabilityPage() {
     setSelectedTruck(truckId);
     setLoadingHistory(true);
     try {
-      const history = await getTruckLoadHistory(truckId, 30);
+      const [history, statusHist] = await Promise.all([
+        getTruckLoadHistory(truckId, 30),
+        getTruckStatusHistory(truckId, 30),
+      ]);
       setTruckHistory(history);
+      setStatusHistory(statusHist);
     } catch (e) {
       console.error("Error fetching truck history:", e);
     } finally {
@@ -226,6 +231,7 @@ export default function TraceabilityPage() {
                     truckId={selectedTruckData.truck_id}
                     unitNumber={selectedTruckData.unit_number}
                     history={truckHistory}
+                    statusHistory={statusHistory}
                   />
                 )
               ) : (

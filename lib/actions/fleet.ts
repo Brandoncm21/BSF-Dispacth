@@ -315,6 +315,81 @@ export async function getTruckLoadHistory(truckId: number, days: number = 30): P
   return data as TruckLoadHistory[];
 }
 
+export type StatusHistoryEvent = {
+  history_id: number;
+  load_id: number;
+  load_number: string | null;
+  old_status: string | null;
+  new_status: string;
+  changed_at: string;
+  notes: string | null;
+  employee_name: string;
+};
+
+export async function getTruckStatusHistory(truckId: number, days: number = 30): Promise<StatusHistoryEvent[]> {
+  const supabase = await getSupabaseServerClient();
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+
+  const { data: truckLoads, error: tlError } = await supabase
+    .from("loads")
+    .select("load_id, load_number")
+    .eq("truck_id", truckId)
+    .gte("booked_at", since.toISOString());
+
+  if (tlError) {
+    console.error("[getTruckStatusHistory] loads:", tlError.message);
+    throw tlError;
+  }
+
+  const loadIds = (truckLoads || []).map((l) => l.load_id);
+  if (loadIds.length === 0) return [];
+
+  const { data: employees, error: empError } = await supabase
+    .from("employees")
+    .select("employee_id, first_name, last_name");
+
+  if (empError) {
+    console.error("[getTruckStatusHistory] employees:", empError.message);
+    throw empError;
+  }
+
+  const empLookup = new Map(
+    (employees || []).map((e: Record<string, unknown>) => [e.employee_id, e])
+  );
+
+  const loadNumberMap = new Map(
+    (truckLoads || []).map((l: Record<string, unknown>) => [l.load_id, l.load_number])
+  );
+
+  const { data: history, error: histError } = await supabase
+    .from("load_status_history")
+    .select("*")
+    .in("load_id", loadIds)
+    .order("changed_at", { ascending: false });
+
+  if (histError) {
+    console.error("[getTruckStatusHistory] history:", histError.message);
+    throw histError;
+  }
+
+  return (history || []).map((r: Record<string, unknown>) => {
+    const empInfo = empLookup.get(r.changed_by as number) as Record<string, unknown> | undefined;
+    return {
+      history_id: r.history_id as number,
+      load_id: r.load_id as number,
+      load_number: (loadNumberMap.get(r.load_id as number) as string) || null,
+      old_status: r.old_status as string | null,
+      new_status: r.new_status as string,
+      changed_at: r.changed_at as string,
+      notes: r.notes as string | null,
+      employee_name: empInfo
+        ? `${(empInfo.first_name as string) || ""} ${(empInfo.last_name as string) || ""}`.trim()
+        : "Sistema",
+    };
+  });
+}
+
 export async function getFleetOverview() {
   const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase
