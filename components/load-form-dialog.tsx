@@ -65,6 +65,7 @@ export function LoadFormDialog({
         status_id: 1,
         picked_up_at: toDatetimeLocal(editingLoad.picked_up_at),
         delivered_at: toDatetimeLocal(editingLoad.delivered_at),
+        confirmed_digital: false,
       }
     : undefined;
 

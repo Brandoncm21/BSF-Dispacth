@@ -60,6 +60,7 @@ export const LoadForm = forwardRef<LoadFormHandle, LoadFormProps>(function LoadF
     status_id: 1,
     picked_up_at: "",
     delivered_at: "",
+    confirmed_digital: false,
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [rcFile, setRcFile] = useState<File | null>(null);
@@ -320,7 +321,26 @@ export const LoadForm = forwardRef<LoadFormHandle, LoadFormProps>(function LoadF
         </select>
       </div>
 
-      <div className="col-span-2 border-t border-zinc-200 dark:border-zinc-700 pt-4 mt-4">
+      <div className="col-span-2 border-t border-zinc-200 dark:border-zinc-700 pt-4 mt-2">
+        <div className="flex items-start gap-3 p-3 bg-zinc-50 dark:bg-zinc-900 rounded-md">
+          <input
+            type="checkbox"
+            id="confirmed_digital"
+            checked={form.confirmed_digital}
+            onChange={(e) => setForm({ ...form, confirmed_digital: e.target.checked })}
+            className="mt-0.5 h-4 w-4"
+          />
+          <Label htmlFor="confirmed_digital" className="text-sm leading-relaxed cursor-pointer">
+            Confirmo digitalmente que los datos de esta carga son correctos y acepto
+            el registro bajo mi usuario de operaciones.
+          </Label>
+        </div>
+        {formErrors.confirmed_digital && (
+          <p className="text-xs text-red-500 mt-1 ml-1">{formErrors.confirmed_digital}</p>
+        )}
+      </div>
+
+      <div className="col-span-2 border-t border-zinc-200 dark:border-zinc-700 pt-4 mt-2">
         <Label className="text-sm font-medium mb-2 block">Documentos (PDF, máx 5MB)</Label>
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">

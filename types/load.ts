@@ -44,6 +44,7 @@ export type LoadForm = {
   status_id: number;
   picked_up_at: string;
   delivered_at: string;
+  confirmed_digital: boolean;
 };
 
 export type SelectOption = { id: number; label: string };
@@ -65,6 +66,7 @@ export const emptyForm: LoadForm = {
   status_id: 1,
   picked_up_at: "",
   delivered_at: "",
+  confirmed_digital: false,
 };
 
 export const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -86,6 +88,9 @@ export const loadSchema = z.object({
   status_id: z.coerce.number().default(1),
   picked_up_at: z.string().min(1, "Fecha de recogida es requerida"),
   delivered_at: z.string().min(1, "Fecha de entrega es requerida"),
+  confirmed_digital: z.boolean().refine(val => val === true, {
+    message: "Debes confirmar digitalmente para continuar",
+  }),
 });
 
 export const documentSchema = z.object({

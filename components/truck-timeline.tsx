@@ -56,6 +56,35 @@ export function TruckTimeline({ truckId, unitNumber, history, statusHistory }: T
     );
   }, [history, loadFilter]);
 
+  const creatorMap = useMemo(() => {
+    const map = new Map<number, { name: string; date: string }>();
+    if (!statusHistory) return map;
+    for (const event of statusHistory) {
+      if (event.old_status === null && !map.has(event.load_id)) {
+        map.set(event.load_id, { name: event.employee_name, date: event.changed_at });
+      }
+    }
+    return map;
+  }, [statusHistory]);
+
+  const lastEditorMap = useMemo(() => {
+    const map = new Map<number, { name: string; date: string }>();
+    if (!statusHistory) return map;
+    const grouped = new Map<number, typeof statusHistory>();
+    for (const event of statusHistory) {
+      const arr = grouped.get(event.load_id) || [];
+      arr.push(event);
+      grouped.set(event.load_id, arr);
+    }
+    for (const [loadId, events] of grouped) {
+      const first = events[0];
+      if (first && first.employee_name) {
+        map.set(loadId, { name: first.employee_name, date: first.changed_at });
+      }
+    }
+    return map;
+  }, [statusHistory]);
+
   if (history.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-zinc-500">
@@ -156,6 +185,27 @@ export function TruckTimeline({ truckId, unitNumber, history, statusHistory }: T
                     </div>
                     <div className="text-xs text-zinc-400">
                       {load.load_date}
+                    </div>
+                    <div className="flex gap-3 mt-1.5">
+                      {creatorMap.has(load.load_id) && (() => {
+                        const c = creatorMap.get(load.load_id)!;
+                        return (
+                          <span className="inline-flex items-center gap-1 text-[10px] text-zinc-400">
+                            <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            Creada por {c.name} · {new Date(c.date).toLocaleDateString("es-CR")}
+                          </span>
+                        );
+                      })()}
+                      {lastEditorMap.has(load.load_id) && (() => {
+                        const e = lastEditorMap.get(load.load_id)!;
+                        if (creatorMap.get(load.load_id)?.name === e.name) return null;
+                        return (
+                          <span className="inline-flex items-center gap-1 text-[10px] text-zinc-400">
+                            <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            Editada por {e.name} · {new Date(e.date).toLocaleDateString("es-CR")}
+                          </span>
+                        );
+                      })()}
                     </div>
                   </div>
                   <div className="text-right">
