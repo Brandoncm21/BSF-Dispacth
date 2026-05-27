@@ -41,14 +41,12 @@ function getDateRange(range: string): { from: string; to: string } {
       return { from: weekAgo.toISOString().slice(0, 10), to };
     }
     case "month": {
-      const monthAgo = new Date(now);
-      monthAgo.setMonth(monthAgo.getMonth() - 1);
-      return { from: monthAgo.toISOString().slice(0, 10), to };
+      const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      return { from: firstOfMonth.toISOString().slice(0, 10), to };
     }
     case "year": {
-      const yearAgo = new Date(now);
-      yearAgo.setFullYear(yearAgo.getFullYear() - 1);
-      return { from: yearAgo.toISOString().slice(0, 10), to };
+      const firstOfYear = new Date(now.getFullYear(), 0, 1);
+      return { from: firstOfYear.toISOString().slice(0, 10), to };
     }
     default:
       return { from: "2000-01-01", to };
@@ -68,8 +66,8 @@ export async function getReportsData(
   const { data, error } = await supabase
     .from("v_sales_performance_extended")
     .select("*")
-    .gte("booked_at", from)
-    .lte("booked_at", to);
+    .gte("effective_date::date", from)
+    .lte("effective_date::date", to);
 
   if (error) {
     console.error("[getReportsData]", error.message);

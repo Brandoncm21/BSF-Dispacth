@@ -80,6 +80,18 @@ export type {
 } from "./actions/reports";
 
 export {
+  getDashboardAnalytics,
+} from "./actions/analytics";
+
+export type {
+  RevenueTrend,
+  DispatcherRanking,
+  LoadStatusDistribution,
+  CarrierPerformance,
+  DashboardKPIs,
+} from "./actions/analytics";
+
+export {
   getTruckById,
   getTrucksWithAvailability,
   getTruckLoadHistory,
