@@ -46,24 +46,34 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   paid: { label: "Pagado", color: "#059669" },
 };
 
-function getMonthRange(): { from: string; to: string } {
+function getMonthRange(tzOffsetMinutes: number = 0): { from: string; to: string } {
   const now = new Date();
-  const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const local = new Date(now.getTime() - tzOffsetMinutes * 60_000);
+
+  const y = local.getUTCFullYear();
+  const m = local.getUTCMonth();
+
+  const absOff = Math.abs(tzOffsetMinutes);
+  const tzHours = Math.floor(absOff / 60);
+  const tzMins = absOff % 60;
+  const sign = tzOffsetMinutes <= 0 ? "+" : "-";
+  const tz = `${sign}${String(tzHours).padStart(2, "0")}:${String(tzMins).padStart(2, "0")}`;
+
   return {
-    from: firstOfMonth.toISOString().slice(0, 10),
-    to: now.toISOString().slice(0, 10),
+    from: `${y}-${String(m + 1).padStart(2, "0")}-01T00:00:00${tz}`,
+    to: `${y}-${String(m + 1).padStart(2, "0")}-${String(local.getUTCDate()).padStart(2, "0")}T23:59:59${tz}`,
   };
 }
 
-export async function getDashboardAnalytics(dispatcherId?: number) {
+export async function getDashboardAnalytics(dispatcherId?: number, tzOffsetMinutes: number = 0) {
   const supabase = await getSupabaseServerClient();
-  const { from, to } = getMonthRange();
+  const { from, to } = getMonthRange(tzOffsetMinutes);
 
   let query = supabase
     .from("v_sales_performance_extended")
     .select("*")
-    .gte("effective_date::date", from)
-    .lte("effective_date::date", to);
+    .gte("effective_date", from)
+    .lte("effective_date", to);
 
   if (dispatcherId) {
     query = query.eq("dispatcher_id", dispatcherId);

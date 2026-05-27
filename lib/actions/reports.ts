@@ -30,44 +30,67 @@ export type GroupedReport = {
   net_profit: number;
 };
 
-function getDateRange(range: string): { from: string; to: string } {
+function getDateRange(range: string, tzOffsetMinutes: number = 0): { from: string; to: string } {
   const now = new Date();
-  const to = now.toISOString().slice(0, 10);
+  const local = new Date(now.getTime() - tzOffsetMinutes * 60_000);
+
+  const y = local.getUTCFullYear();
+  const m = local.getUTCMonth();
+  const d = local.getUTCDate();
+
+  const absOff = Math.abs(tzOffsetMinutes);
+  const tzHours = Math.floor(absOff / 60);
+  const tzMins = absOff % 60;
+  const sign = tzOffsetMinutes <= 0 ? "+" : "-";
+  const tz = `${sign}${String(tzHours).padStart(2, "0")}:${String(tzMins).padStart(2, "0")}`;
+
+  const fmt = (year: number, month: number, day: number, hour: number, min: number, sec: number) =>
+    `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}T${String(hour).padStart(2, "0")}:${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}${tz}`;
 
   switch (range) {
     case "week": {
-      const weekAgo = new Date(now);
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      return { from: weekAgo.toISOString().slice(0, 10), to };
+      const weekAgo = new Date(local.getTime() - 7 * 86_400_000);
+      return {
+        from: fmt(weekAgo.getUTCFullYear(), weekAgo.getUTCMonth(), weekAgo.getUTCDate(), 0, 0, 0),
+        to: fmt(y, m, d, 23, 59, 59),
+      };
     }
     case "month": {
-      const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      return { from: firstOfMonth.toISOString().slice(0, 10), to };
+      return {
+        from: fmt(y, m, 1, 0, 0, 0),
+        to: fmt(y, m, d, 23, 59, 59),
+      };
     }
     case "year": {
-      const firstOfYear = new Date(now.getFullYear(), 0, 1);
-      return { from: firstOfYear.toISOString().slice(0, 10), to };
+      return {
+        from: fmt(y, 0, 1, 0, 0, 0),
+        to: fmt(y, m, d, 23, 59, 59),
+      };
     }
     default:
-      return { from: "2000-01-01", to };
+      return {
+        from: "2000-01-01T00:00:00Z",
+        to: fmt(y, m, d, 23, 59, 59),
+      };
   }
 }
 
 export async function getReportsData(
-  range: string = "month"
+  range: string = "month",
+  tzOffsetMinutes: number = 0
 ): Promise<{
   byDispatcher: GroupedReport[];
   byCarrier: GroupedReport[];
   byTruck: GroupedReport[];
 }> {
   const supabase = await getSupabaseServerClient();
-  const { from, to } = getDateRange(range);
+  const { from, to } = getDateRange(range, tzOffsetMinutes);
 
   const { data, error } = await supabase
     .from("v_sales_performance_extended")
     .select("*")
-    .gte("effective_date::date", from)
-    .lte("effective_date::date", to);
+    .gte("effective_date", from)
+    .lte("effective_date", to);
 
   if (error) {
     console.error("[getReportsData]", error.message);

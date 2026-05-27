@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -21,6 +21,8 @@ export function DashboardContent() {
   const isBackOffice = role === "back_office";
   const showGlobal = role === "admin" || role === "back_office";
 
+  const tzOffsetRef = useRef(new Date().getTimezoneOffset());
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [kpis, setKpis] = useState<DashboardKPIs | null>(null);
@@ -34,7 +36,7 @@ export function DashboardContent() {
       setLoading(true);
       setError(null);
       try {
-        const result = await getDashboardAnalytics();
+        const result = await getDashboardAnalytics(undefined, tzOffsetRef.current);
         setKpis(result.kpis);
         setRevenueTrend(result.revenueTrend);
         setDispatcherRanking(result.dispatcherRanking);

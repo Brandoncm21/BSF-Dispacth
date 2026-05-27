@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -27,6 +27,7 @@ const RANGE_OPTIONS: { value: DateRange; label: string }[] = [
 ];
 
 export default function ReportsPage() {
+  const tzOffsetRef = useRef(new Date().getTimezoneOffset());
   const [dateRange, setDateRange] = useState<DateRange>("month");
   const [activeTab, setActiveTab] = useState("dispatcher");
   const [byDispatcher, setByDispatcher] = useState<GroupedReport[]>([]);
@@ -39,7 +40,7 @@ export default function ReportsPage() {
     setLoading(true);
     setError(null);
     try {
-      const result = await getReportsData(dateRange);
+      const result = await getReportsData(dateRange, tzOffsetRef.current);
       setByDispatcher(result.byDispatcher);
       setByCarrier(result.byCarrier);
       setByTruck(result.byTruck);

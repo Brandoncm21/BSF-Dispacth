@@ -114,3 +114,5 @@ lib/actions/
 - TypeScript types generated from Supabase schema (current `types/database.types.ts` is manually maintained)
 - Integration tests for server actions (Vitest + MSW not yet configured for API mocking)
 - E2E tests (Playwright not installed)
+
+- 2026-05-26: Fixed timezone bug in reports.ts, analytics.ts — getDateRange now accepts client tzOffsetMinutes, formats ISO strings with timezone offset, filters on raw TIMESTAMPTZ without ::date cast. Fixed get_truck_load_history INNER JOIN → LEFT JOIN. Added idx_loads_effective_date expression index.
