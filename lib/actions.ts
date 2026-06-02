@@ -142,3 +142,17 @@ export type {
   TruckWithSmartStatus,
   Broker,
 } from "./actions/fleet";
+
+export {
+  reportCheckpoint,
+  getCheckpointHistory,
+  getLoadTrack,
+} from "./actions/tracking";
+
+export {
+  createNotification,
+  getNotifications,
+  getUnreadCount,
+  markRead,
+  markAllRead,
+} from "./actions/notifications";

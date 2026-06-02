@@ -1,12 +1,19 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { TruckBadge } from "@/components/truck-badge";
 import { TruckTimeline } from "@/components/truck-timeline";
 import { FleetAlerts } from "@/components/fleet-alerts";
 import { getFleetOverview, getFleetAlerts, getTruckLoadHistory, getTruckStatusHistory, TruckWithAvailability, FleetAlert, TruckLoadHistory, StatusHistoryEvent } from "@/lib/actions";
 import { ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
+
+const TrackingMapWithNoSSR = dynamic(
+  () => import("@/components/tracking-map").then((mod) => ({ default: mod.TrackingMap })),
+  { ssr: false }
+);
 
 type FleetByCarrier = Record<string, TruckWithAvailability[]>;
 
@@ -19,6 +26,10 @@ export default function TraceabilityPage() {
   const [truckHistory, setTruckHistory] = useState<TruckLoadHistory[]>([]);
   const [statusHistory, setStatusHistory] = useState<StatusHistoryEvent[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [trackingMarkers, setTrackingMarkers] = useState<Array<{
+    load_id: number; load_number: string | null; unit_number: string | null;
+    lat: number; lng: number; last_reported: string;
+  }>>([]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -32,6 +43,40 @@ export default function TraceabilityPage() {
       const firstCarrier = Object.keys(fleetData)[0];
       if (firstCarrier) {
         setExpandedCarrier(firstCarrier);
+      }
+
+      // Fetch latest checkpoints for trucks in route
+      const supabase = createSupabaseBrowserClient();
+      const inRouteTrucks = Object.values(fleetData).flat().filter((t) => t.availability_status === "en_ruta" && t.current_load_id);
+      if (inRouteTrucks.length > 0) {
+        const loadIds = inRouteTrucks.map((t) => t.current_load_id!);
+        const { data: latestCheckpoints } = await supabase
+          .from("driver_checkpoints")
+          .select("load_id, lat, lng, recorded_at, loads!inner(load_number, trucks!inner(unit_number))")
+          .in("load_id", loadIds)
+          .order("recorded_at", { ascending: false });
+        if (latestCheckpoints) {
+          const seen = new Set<number>();
+          const markers = latestCheckpoints
+            .filter((cp: Record<string, unknown>) => {
+              const lid = cp.load_id as number;
+              if (seen.has(lid)) return false;
+              seen.add(lid);
+              return true;
+            })
+            .map((cp: Record<string, unknown>) => {
+              const loadData = cp.loads as Record<string, unknown>;
+              return {
+                load_id: cp.load_id as number,
+                load_number: (loadData?.load_number as string) || null,
+                unit_number: ((loadData?.trucks as Record<string, unknown>)?.unit_number as string) || null,
+                lat: Number(cp.lat),
+                lng: Number(cp.lng),
+                last_reported: cp.recorded_at as string,
+              };
+            });
+          setTrackingMarkers(markers);
+        }
       }
     } catch (e) {
       console.error("Error fetching fleet data:", e);
@@ -122,6 +167,15 @@ export default function TraceabilityPage() {
           <div className="text-sm text-zinc-600 dark:text-zinc-400">Total Flota</div>
         </div>
       </div>
+
+      {trackingMarkers.length > 0 && (
+        <div className="mb-8 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+          <div className="p-4 border-b border-zinc-200 dark:border-zinc-800">
+            <h2 className="text-lg font-semibold">Mapa de Tracking</h2>
+          </div>
+          <TrackingMapWithNoSSR truckMarkers={trackingMarkers} height="350px" />
+        </div>
+      )}
 
       <div className="grid grid-cols-3 gap-6">
         <div className="col-span-2 space-y-4">
