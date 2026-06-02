@@ -1,8 +1,7 @@
 ## ADDED Requirements
 
-### Requirement: Realtime broadcast of checkpoints to assigned dispatcher
-Feature: Realtime Notifications
-Rule: When a driver submits a checkpoint, the assigned dispatcher receives it instantly
+### Requirement: System SHALL broadcast checkpoints via Realtime to assigned dispatcher
+The system MUST deliver checkpoint events to the assigned dispatcher via Supabase Realtime in real-time
 
 #### Scenario: Dispatcher receives checkpoint broadcast in real-time
 - **GIVEN** the dispatcher is on any page in the app

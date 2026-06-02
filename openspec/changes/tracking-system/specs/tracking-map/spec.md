@@ -1,8 +1,7 @@
 ## ADDED Requirements
 
-### Requirement: Dispatcher views live positions on Mapbox map
-Feature: Tracking Map
-Rule: The dispatcher can see the last reported position of every in-route truck on a Mapbox map
+### Requirement: Dispatcher SHALL view live positions on Mapbox map
+The system SHALL display the last reported position of every in-route truck on a Mapbox map to the dispatcher
 
 #### Scenario: Map shows pins for all trucks in route
 - **GIVEN** the dispatcher is on the `/traceability` page

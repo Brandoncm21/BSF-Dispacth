@@ -1,8 +1,7 @@
 ## ADDED Requirements
 
-### Requirement: Notification bell shows unread count
-Feature: Notification Center
-Rule: The dispatcher sees unread notification count and can view recent notifications
+### Requirement: Notification bell SHALL show unread count
+The system MUST display the unread notification count on a bell icon and allow the dispatcher to view recent notifications
 
 #### Scenario: Bell badge shows unread count on page load
 - **GIVEN** the dispatcher is logged in

@@ -1,8 +1,7 @@
 ## ADDED Requirements
 
-### Requirement: Driver reports checkpoint during active load
-Feature: Driver Checkpoint
-Rule: The driver can report their current location at any time while the load is in progress
+### Requirement: Driver SHALL report checkpoint during active load
+The system SHALL allow the driver to report their current position at any time while the load is in progress
 
 #### Scenario: Driver reports position with success
 - **GIVEN** the driver has an active load in status `picked_up` or `booked`

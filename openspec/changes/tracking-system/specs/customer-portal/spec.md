@@ -1,8 +1,7 @@
 ## ADDED Requirements
 
-### Requirement: Shipper views load progress via public tracking URL
-Feature: Customer Portal
-Rule: A shipper with a valid tracking token can view their load's progress without authentication
+### Requirement: Shipper SHALL view load progress via public tracking URL
+The system MUST provide a public tracking page for shippers and brokers to view their load's progress without authentication
 
 #### Scenario: Shipper opens tracking URL with valid token
 - **GIVEN** a shipper has received a tracking URL (e.g., `/track/a1b2c3d4-e5f6-...`)
