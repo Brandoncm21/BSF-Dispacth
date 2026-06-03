@@ -176,7 +176,7 @@ export default function TraceabilityPage() {
           <TrackingMapWithNoSSR truckMarkers={trackingMarkers} height="350px" />
         ) : (
           <div className="flex items-center justify-center h-[350px] text-zinc-400 text-sm bg-zinc-50 dark:bg-zinc-900">
-            No hay camiones en ruta con ubicación reportada
+            Ningún camión en ruta
           </div>
         )}
       </div>

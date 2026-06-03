@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Edit2, Trash2, FileText, MapPin } from "lucide-react";
+import { Edit2, Trash2, MapPin, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LOAD_STATUS, LOAD_STATUS_LABELS, LOAD_STATUS_COLORS, LoadStatus } from "@/lib/constants";
 import { formatTimestamp, formatDollarPerMile } from "@/lib/format";
@@ -11,12 +11,12 @@ type LoadsTableProps = {
   loads: Load[];
   onEdit: (load: Load) => void;
   onDelete: (loadId: number) => void;
-  onViewDocs: (loadId: number) => void;
+  onViewDetails: (load: Load) => void;
   onStatusChange: (loadId: number, newStatus: string) => void;
   onCheckpoint?: (load: Load) => void;
 };
 
-export function LoadsTable({ loads, onEdit, onDelete, onViewDocs, onStatusChange, onCheckpoint }: LoadsTableProps) {
+export function LoadsTable({ loads, onEdit, onDelete, onViewDetails, onStatusChange, onCheckpoint }: LoadsTableProps) {
   return (
     <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 overflow-hidden">
       <table className="w-full text-sm">
@@ -95,14 +95,14 @@ export function LoadsTable({ loads, onEdit, onDelete, onViewDocs, onStatusChange
               </td>
               <td className="px-4 py-3 text-right">
                 <div className="flex justify-end gap-1">
+                  <Button variant="ghost" size="icon" onClick={() => onViewDetails(load)} title="Detalles de carga">
+                    <Eye className="h-4 w-4 text-zinc-600" />
+                  </Button>
                   {onCheckpoint && load.driver_id && (load.load_status === LOAD_STATUS.BOOKED || load.load_status === LOAD_STATUS.PICKED_UP) && (
                     <Button variant="ghost" size="icon" onClick={() => onCheckpoint(load)} title="Reportar posición">
                       <MapPin className="h-4 w-4 text-emerald-500" />
                     </Button>
                   )}
-                  <Button variant="ghost" size="icon" onClick={() => onViewDocs(load.load_id)} title="Ver documentos">
-                    <FileText className="h-4 w-4 text-blue-500" />
-                  </Button>
                   <Button variant="ghost" size="icon" onClick={() => onEdit(load)}>
                     <Edit2 className="h-4 w-4" />
                   </Button>

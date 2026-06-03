@@ -13,7 +13,7 @@ import { PaginationControls } from "@/components/pagination-controls";
 import { TableSkeleton } from "@/components/table-skeleton";
 import { LoadsTable } from "@/components/loads-table";
 import { LoadFormDialog } from "@/components/load-form-dialog";
-import { LoadDocsDialog } from "@/components/load-docs-dialog";
+import { LoadDetailModal } from "@/components/load-detail-modal";
 import { CheckpointForm } from "@/components/checkpoint-form";
 import { TabBar } from "@/components/tab-bar";
 import { createLoad, updateLoad, uploadLoadDocument, reportCheckpoint } from "@/lib/actions";
@@ -42,6 +42,7 @@ export default function LoadsPage() {
   const [editingLoad, setEditingLoad] = useState<Load | null>(null);
   const [formLoading, setFormLoading] = useState(false);
   const [docsLoadId, setDocsLoadId] = useState<number | null>(null);
+  const [detailLoad, setDetailLoad] = useState<Load | null>(null);
   const [checkpointLoad, setCheckpointLoad] = useState<Load | null>(null);
   const [checkpointSending, setCheckpointSending] = useState(false);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -129,7 +130,7 @@ export default function LoadsPage() {
 
   function openEdit(load: Load) { setEditingLoad(load); setDialogOpen(true); }
 
-  function openDocs(loadId: number) { setDocsLoadId(loadId); }
+  function openDetails(load: Load) { setDetailLoad(load); }
 
   function openCheckpoint(load: Load) { setCheckpointLoad(load); }
 
@@ -220,7 +221,7 @@ export default function LoadsPage() {
               loads={loads}
               onEdit={openEdit}
               onDelete={handleDelete}
-              onViewDocs={openDocs}
+              onViewDetails={openDetails}
               onStatusChange={updateStatus}
               onCheckpoint={openCheckpoint}
             />
@@ -251,11 +252,13 @@ export default function LoadsPage() {
         onCreateSpecialRequirement={handleCreateSpecialRequirement}
       />
 
-      <LoadDocsDialog
-        open={docsLoadId !== null}
-        onOpenChange={(open) => { if (!open) setDocsLoadId(null); }}
-        loadId={docsLoadId}
-      />
+      {detailLoad && (
+        <LoadDetailModal
+          load={detailLoad}
+          open={detailLoad !== null}
+          onOpenChange={(open) => { if (!open) setDetailLoad(null); }}
+        />
+      )}
 
       {/* Checkpoint dialog */}
       <Dialog open={checkpointLoad !== null} onOpenChange={(open) => { if (!open) setCheckpointLoad(null); }}>
