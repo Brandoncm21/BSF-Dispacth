@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Loader2, FileText, Eye, Trash2, MapPin, Truck, User, Package, Route, DollarSign, Gauge, Calendar, FileWarning } from "lucide-react";
-import { getLoadDocuments, getDocumentSignedUrl, deleteLoadDocument, getCheckpointHistory } from "@/lib/actions";
+import { getLoadDocuments, getDocumentSignedUrl, deleteLoadDocument, getCheckpointHistory, calculateRouteMiles } from "@/lib/actions";
 import { formatTimestamp, formatDollarPerMile } from "@/lib/format";
 import { LOAD_STATUS_LABELS, LOAD_STATUS_COLORS, LoadStatus } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -224,6 +224,7 @@ function TabTracking({ loadId, load }: { loadId: number; load: Load }) {
   const [routeOrigin, setRouteOrigin] = useState<{ lat: number; lng: number; address: string } | null>(null);
   const [routeDest, setRouteDest] = useState<{ lat: number; lng: number; address: string } | null>(null);
   const [waypoints, setWaypoints] = useState<WaypointData[]>([]);
+  const [routeGeometry, setRouteGeometry] = useState<{ type: "LineString"; coordinates: number[][] } | null>(null);
   const supabase = useRef(createSupabaseBrowserClient());
 
   useEffect(() => {
@@ -274,12 +275,24 @@ function TabTracking({ loadId, load }: { loadId: number; load: Load }) {
                 });
               }
 
+              let originLat: number | null = null;
+              let originLng: number | null = null;
+              let destLat: number | null = null;
+              let destLng: number | null = null;
+              const routeWaypoints: WaypointData[] = [];
+
               if (route.origin_location_id && locMap[route.origin_location_id]) {
-                setRouteOrigin(locMap[route.origin_location_id]);
+                const loc = locMap[route.origin_location_id];
+                setRouteOrigin(loc);
+                originLat = loc.lat;
+                originLng = loc.lng;
               }
 
               if (route.destination_location_id && locMap[route.destination_location_id]) {
-                setRouteDest(locMap[route.destination_location_id]);
+                const loc = locMap[route.destination_location_id];
+                setRouteDest(loc);
+                destLat = loc.lat;
+                destLng = loc.lng;
               }
 
               if (rawWaypoints.length > 0) {
@@ -296,6 +309,25 @@ function TabTracking({ loadId, load }: { loadId: number; load: Load }) {
                   })
                   .filter((wp) => wp.lat != null && wp.lng != null);
                 setWaypoints(mapped);
+                mapped.forEach((wp) => routeWaypoints.push(wp));
+              }
+
+              // Fetch real road geometry from Mapbox Directions API
+              if (originLat != null && originLng != null && destLat != null && destLng != null) {
+                const waypointsForApi = routeWaypoints.map((wp) => ({
+                  lat: wp.lat as number,
+                  lng: wp.lng as number,
+                }));
+                const result = await calculateRouteMiles(
+                  originLat,
+                  originLng,
+                  destLat,
+                  destLng,
+                  waypointsForApi.length > 0 ? waypointsForApi : undefined
+                );
+                if (result.geometry) {
+                  setRouteGeometry(result.geometry);
+                }
               }
             }
           }
@@ -335,6 +367,7 @@ function TabTracking({ loadId, load }: { loadId: number; load: Load }) {
               destLat={routeDest?.lat}
               destAddress={routeDest?.address}
               waypoints={waypoints}
+              routeGeometry={routeGeometry}
             />
           </div>
           <div className="space-y-2 max-h-[200px] overflow-y-auto">

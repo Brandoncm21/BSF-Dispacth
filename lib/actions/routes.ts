@@ -156,33 +156,47 @@ export async function createRoute(
 }
 
 /**
- * Calculate route miles using Mapbox Directions API with exact lat/lng
- * Now uses coordinates directly instead of geocoding city/state text
+ * Calculate route miles using Mapbox Directions API with exact lat/lng.
+ * Supports waypoints for multi-stop routes.
+ * Returns the driving distance and full route geometry (polyline over roads).
  */
 export async function calculateRouteMiles(
   originLat: number,
   originLng: number,
   destLat: number,
-  destLng: number
+  destLng: number,
+  waypoints?: Array<{ lat: number; lng: number }>
 ) {
   const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-  if (!token) return { error: "Mapbox no configurado", miles: null };
+  if (!token) return { error: "Mapbox no configurado", miles: null, geometry: null };
 
-  const directionsUrl = `https://api.mapbox.com/directions/v5/mapbox/driving/${originLng},${originLat};${destLng},${destLat}?access_token=${token}&geometries=geojson&overview=false`;
+  // Build coordinates string: origin;waypoint1;...;waypointN;destination
+  const coords = [`${originLng},${originLat}`];
+  if (waypoints && waypoints.length > 0) {
+    const sorted = [...waypoints].filter((wp) => wp.lat != null && wp.lng != null);
+    sorted.forEach((wp) => coords.push(`${wp.lng},${wp.lat}`));
+  }
+  coords.push(`${destLng},${destLat}`);
+
+  const directionsUrl = `https://api.mapbox.com/directions/v5/mapbox/driving/${coords.join(";")}?access_token=${token}&geometries=geojson&overview=full`;
   const dirRes = await fetch(directionsUrl);
   if (!dirRes.ok) {
-    return { error: "Error al calcular la ruta", miles: null };
+    return { error: "Error al calcular la ruta", miles: null, geometry: null };
   }
 
   const dirData = await dirRes.json();
-  const distanceMeters = dirData.routes?.[0]?.distance;
-  if (!distanceMeters) {
-    return { error: "No se encontró una ruta", miles: null };
+  const route = dirData.routes?.[0];
+  if (!route || !route.distance) {
+    return { error: "No se encontró una ruta", miles: null, geometry: null };
   }
 
-  const miles = Math.round(distanceMeters * 0.000621371 * 10) / 10;
+  const miles = Math.round(route.distance * 0.000621371 * 10) / 10;
 
-  return { miles, error: null };
+  return {
+    miles,
+    geometry: route.geometry || null,
+    error: null,
+  };
 }
 
 // ============================================================

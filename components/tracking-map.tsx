@@ -51,6 +51,10 @@ type Props = {
   destLat?: number;
   destAddress?: string;
   waypoints?: WaypointData[];
+  routeGeometry?: {
+    type: "LineString";
+    coordinates: number[][];
+  } | null;
 };
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
@@ -105,6 +109,7 @@ export function TrackingMap({
   destLat,
   destAddress,
   waypoints,
+  routeGeometry,
 }: Props) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -385,14 +390,15 @@ export function TrackingMap({
       markersRef.current.push(marker);
     }
 
-    // Draw planned route line: origin → waypoints → dest
+    // Draw planned route line: real roads (Directions API) or direct line
     if (routeCoords.length >= 2) {
+      const lineGeometry = routeGeometry || { type: "LineString" as const, coordinates: routeCoords };
       map.current.addSource("planned-route", {
         type: "geojson",
         data: {
           type: "Feature",
           properties: {},
-          geometry: { type: "LineString", coordinates: routeCoords },
+          geometry: lineGeometry,
         },
       });
 
@@ -413,7 +419,7 @@ export function TrackingMap({
     if (routeCoords.length > 0) {
       map.current.fitBounds(bounds, { padding: 60, maxZoom: 12 });
     }
-  }, [originLng, originLat, destLng, destLat, waypoints, loaded]);
+  }, [originLng, originLat, destLng, destLat, waypoints, routeGeometry, loaded]);
 
   if (!MAPBOX_TOKEN) {
     return (

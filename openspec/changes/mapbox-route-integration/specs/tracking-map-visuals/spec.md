@@ -48,11 +48,20 @@ All tracking maps (`/traceability`, Load Detail Modal "Mapa de Tracking" tab) cu
 - **AND** 1 delivery waypoint appears as a blue dot
 - **AND** each dot shows the correct type and sequence number in its popup
 
-### Requirement: Route line MUST connect origin → waypoints → destination
+### Requirement: Route line MUST follow real roads (Mapbox Directions API)
 
-- `SHALL-MAP-VIS-04`: The route line (GeoJSON LineString) MUST connect all stops in order: origin → waypoint[0] → waypoint[N] → destination.
-- `SHALL-MAP-VIS-04a`: If no waypoints exist, the line connects origin → destination directly.
-- `SHALL-MAP-VIS-04b`: Checkpoint markers remain drawn, but the route line is always the planned route (locations), not the checkpoint trail.
+- `SHALL-MAP-VIS-04`: The route line MUST use **Mapbox Directions API** (`mapbox/driving` profile, `overview=full`) to obtain real road geometry (polyline), NOT a straight Euclidean LineString.
+- `SHALL-MAP-VIS-04a`: The API call SHALL include all coordinates in sequence: origin → waypoint[0] → waypoint[N] → destination.
+- `SHALL-MAP-VIS-04b`: The response geometry (`GeoJSON LineString`) SHALL be passed to `TrackingMap` via the `routeGeometry` prop.
+- `SHALL-MAP-VIS-04c`: The map SHALL render the route using `map.addSource({ type: "geojson" })` with the real road LineString.
+- `SHALL-MAP-VIS-04d`: If `routeGeometry` is not available (API failure or missing coords), the map SHALL fall back to a direct LineString connecting available stops.
+- `SHALL-MAP-VIS-04e`: Checkpoint markers remain drawn, but the planned route line (from Directions API) is the primary visual — NOT the checkpoint trail.
+
+#### Scenario: Route drawn over real roads
+- **GIVEN** a route from Houston to Dallas with waypoints in San Antonio and Austin
+- **WHEN** the map renders
+- **THEN** the route line follows Interstate highways (I-10, I-35) instead of straight lines
+- **AND** the polyline geometry comes from Mapbox Directions API response
 
 ### Requirement: Missing coordinates MUST NOT break the map
 

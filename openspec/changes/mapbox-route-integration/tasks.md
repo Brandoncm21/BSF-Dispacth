@@ -39,13 +39,22 @@
 - [x] 4.7 `LoadDetailModal TabTracking`: fetch route origin/dest/waypoints + pasar a TrackingMap
 - [x] 4.8 Build: 0 TypeScript errors
 
-## 5. Testing & Validation
-- [ ] 5.1 Test: Crear ruta nueva con Mapbox Autocomplete
-- [ ] 5.2 Test: Reutilizar dirección existente (mismo mapbox_place_id)
-- [ ] 5.3 Test: Calcular distancia automática con lat/lng exactos
-- [ ] 5.4 Test: Crear carga con nueva ruta sin `origin_address_id`/`destination_address_id`
-- [ ] 5.5 Test: Verificar que datos históricos siguen visibles (rutas viejas migradas)
-- [ ] 5.6 Validar: `openspec validate mapbox-route-integration --type change --strict`
+## 5. Real Road Geometry (Mapbox Directions API)
+- [x] 5.1 `calculateRouteMiles()`: accept waypoints array, return `geometry` from Directions API
+- [x] 5.2 `TrackingMap`: add `routeGeometry` prop, draw real road line when available
+- [x] 5.3 `LoadDetailModal TabTracking`: fetch geometry via `calculateRouteMiles()`, pass to TrackingMap
+- [x] 5.4 Update specs: `route-cost-calculation` (waypoints + real distance), `tracking-map-visuals` (Directions API)
+- [x] 5.5 ADR-0008: Mapbox Directions API for real route lines
+- [x] 5.6 Build: 0 TypeScript errors
 
-## 6. ADR
-- [x] 6.1 Crear ADR-0007: Use Denormalized locations table over Normalized addresses/streets/cities
+## 6. Testing & Validation
+- [ ] 6.1 Test: Crear ruta nueva con Mapbox Autocomplete
+- [ ] 6.2 Test: Reutilizar dirección existente (mismo mapbox_place_id)
+- [ ] 6.3 Test: Calcular distancia automática con lat/lng exactos
+- [ ] 6.4 Test: Crear carga con nueva ruta sin `origin_address_id`/`destination_address_id`
+- [ ] 6.5 Test: Verificar que datos históricos siguen visibles (rutas viejas migradas)
+- [ ] 6.6 Validar: `openspec validate mapbox-route-integration --type change --strict`
+
+## 7. ADR
+- [x] 7.1 Crear ADR-0007: Use Denormalized locations table over Normalized addresses/streets/cities
+- [x] 7.2 Crear ADR-0008: Mapbox Directions API for real route lines
