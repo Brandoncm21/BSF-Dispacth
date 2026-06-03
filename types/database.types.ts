@@ -367,6 +367,42 @@ export type Database = {
         };
       };
 
+      driver_checkpoints: {
+        Row: {
+          checkpoint_id: number;
+          load_id: number;
+          driver_id: number | null;
+          lat: number;
+          lng: number;
+          recorded_at: string;
+          status_at_checkpoint: string | null;
+          notes: string | null;
+          created_by: number | null;
+        };
+        Insert: {
+          checkpoint_id?: number;
+          load_id: number;
+          driver_id?: number | null;
+          lat: number;
+          lng: number;
+          recorded_at?: string;
+          status_at_checkpoint?: string | null;
+          notes?: string | null;
+          created_by?: number | null;
+        };
+        Update: {
+          checkpoint_id?: number;
+          load_id?: number;
+          driver_id?: number | null;
+          lat?: number;
+          lng?: number;
+          recorded_at?: string;
+          status_at_checkpoint?: string | null;
+          notes?: string | null;
+          created_by?: number | null;
+        };
+      };
+
       maintenance_records: {
         Row: {
           maintenance_id: number;
@@ -453,6 +489,7 @@ export type Database = {
           estimated_time: string | null;
           miles: number | null;
           status_id: number | null;
+          waypoints: unknown[] | null;
         };
         Insert: {
           route_id?: number;
@@ -461,6 +498,7 @@ export type Database = {
           estimated_time?: string | null;
           miles?: number | null;
           status_id?: number | null;
+          waypoints?: unknown[] | null;
         };
         Update: {
           route_id?: number;
@@ -469,6 +507,7 @@ export type Database = {
           estimated_time?: string | null;
           miles?: number | null;
           status_id?: number | null;
+          waypoints?: unknown[] | null;
         };
       };
 

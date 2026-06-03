@@ -547,6 +547,11 @@ ALTER TABLE carriers ADD COLUMN IF NOT EXISTS mc_number VARCHAR(50);
 ALTER TABLE drivers ADD COLUMN IF NOT EXISTS cdl_number VARCHAR(50);
 ALTER TABLE loads ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
 
+ALTER TABLE routes
+    ADD COLUMN IF NOT EXISTS origin_location_id INTEGER REFERENCES locations(location_id),
+    ADD COLUMN IF NOT EXISTS destination_location_id INTEGER REFERENCES locations(location_id),
+    ADD COLUMN IF NOT EXISTS waypoints JSONB DEFAULT '[]'::jsonb;
+
 -- Tablas nuevas
 CREATE TABLE IF NOT EXISTS load_documents (
     document_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -568,6 +573,41 @@ CREATE TABLE IF NOT EXISTS load_status_history (
     changed_at TIMESTAMPTZ DEFAULT NOW(),
     notes TEXT
 );
+
+-- ============================================================
+-- TABLAS DE TRACKING (sincronizadas con producción)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS locations (
+    location_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    formatted_address TEXT NOT NULL,
+    street TEXT,
+    city TEXT,
+    state TEXT,
+    zip TEXT,
+    lat NUMERIC(10,8),
+    lng NUMERIC(11,8),
+    mapbox_place_id TEXT UNIQUE,
+    source TEXT DEFAULT 'mapbox',
+    status_id INTEGER REFERENCES record_status(status_id) DEFAULT 1,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS driver_checkpoints (
+    checkpoint_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    load_id INTEGER NOT NULL REFERENCES loads(load_id) ON DELETE CASCADE,
+    driver_id INTEGER REFERENCES drivers(driver_id) ON DELETE SET NULL,
+    lat NUMERIC(10,8) NOT NULL,
+    lng NUMERIC(11,8) NOT NULL,
+    recorded_at TIMESTAMPTZ DEFAULT NOW(),
+    status_at_checkpoint VARCHAR(50),
+    notes TEXT,
+    created_by INTEGER REFERENCES employees(employee_id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_locations_mapbox_place_id ON locations(mapbox_place_id);
+CREATE INDEX IF NOT EXISTS idx_driver_checkpoints_load_id ON driver_checkpoints(load_id);
+CREATE INDEX IF NOT EXISTS idx_driver_checkpoints_recorded_at ON driver_checkpoints(recorded_at DESC);
 
 -- Secuencia y trigger para load_number atómico
 CREATE SEQUENCE IF NOT EXISTS loads_seq START 1;
