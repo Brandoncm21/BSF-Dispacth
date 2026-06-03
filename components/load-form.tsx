@@ -78,6 +78,16 @@ export const LoadForm = forwardRef<LoadFormHandle, LoadFormProps>(function LoadF
   useEffect(() => {
     if (initialValues) {
       setForm(initialValues);
+      if (initialValues.broker_id) {
+        supabase
+          .from("brokers")
+          .select("first_name, last_name")
+          .eq("broker_id", parseInt(initialValues.broker_id))
+          .single()
+          .then(({ data }) => {
+            if (data) setBrokerLabel(`${data.first_name} ${data.last_name}`);
+          });
+      }
     }
   }, [initialValues]);
 

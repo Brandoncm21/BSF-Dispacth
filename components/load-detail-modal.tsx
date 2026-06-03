@@ -94,6 +94,7 @@ function TabGeneral({ load }: { load: Load }) {
     { label: "Número de Carga", value: load.load_number || `#${load.load_id}`, icon: <FileWarning className="h-4 w-4 text-zinc-400" /> },
     { label: "Carrier", value: load.carrier_name, icon: <Truck className="h-4 w-4 text-zinc-400" /> },
     { label: "Conductor", value: load.driver_name, icon: <User className="h-4 w-4 text-zinc-400" /> },
+    { label: "Broker", value: load.broker_name || "Sin broker", icon: <User className="h-4 w-4 text-zinc-400" /> },
     { label: "Unidad", value: load.unit_number, icon: <Truck className="h-4 w-4 text-zinc-400" /> },
     { label: "Tipo de Carga", value: load.cargo_type_name, icon: <Package className="h-4 w-4 text-zinc-400" /> },
     { label: "Millas", value: load.miles ? `${load.miles} mi` : null, icon: <Route className="h-4 w-4 text-zinc-400" /> },

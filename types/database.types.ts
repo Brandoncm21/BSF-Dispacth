@@ -945,6 +945,8 @@ export type Database = {
           unit_number: string | null;
           miles: number | null;
           cargo_type_name: string | null;
+          broker_name: string | null;
+          broker_mc: string | null;
           dispatch_fee: number;
           total_count: number;
         }>;
