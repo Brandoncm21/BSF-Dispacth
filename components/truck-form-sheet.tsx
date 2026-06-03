@@ -27,6 +27,7 @@ interface DriverOption {
 }
 
 const TRUCK_TYPES = ["Semi", "Hotshot", "Box Truck", "Furgón", "Camión", "Refrigerado"];
+const FUEL_TYPES = ["diesel", "gasoline"];
 const OPERATIONAL_STATUSES = ["Activo", "Inactivo", "En mantenimiento"];
 
 interface TruckFormSheetProps {
@@ -51,6 +52,8 @@ export function TruckFormSheet({ open, onOpenChange, truck, onSuccess }: TruckFo
     truck_name: "",
     empty_weight: "",
     driver_id: "",
+    fuel_type: "",
+    fuel_cost_per_mile: "0.60",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -100,6 +103,8 @@ export function TruckFormSheet({ open, onOpenChange, truck, onSuccess }: TruckFo
         truck_name: truck.truck_name || "",
         empty_weight: truck.empty_weight?.toString() || "",
         driver_id: truck.driver_id?.toString() || "",
+        fuel_type: truck.fuel_type || "",
+        fuel_cost_per_mile: truck.fuel_cost_per_mile?.toString() || "0.60",
       });
     } else {
       setForm({
@@ -113,6 +118,8 @@ export function TruckFormSheet({ open, onOpenChange, truck, onSuccess }: TruckFo
         truck_name: "",
         empty_weight: "",
         driver_id: "",
+        fuel_type: "",
+        fuel_cost_per_mile: "0.60",
       });
     }
     setErrors({});
@@ -148,6 +155,8 @@ export function TruckFormSheet({ open, onOpenChange, truck, onSuccess }: TruckFo
         truck_name: form.truck_name || undefined,
         empty_weight: form.empty_weight ? parseFloat(form.empty_weight) : undefined,
         driver_id: form.driver_id ? parseInt(form.driver_id) : undefined,
+        fuel_type: form.fuel_type || undefined,
+        fuel_cost_per_mile: form.fuel_cost_per_mile ? parseFloat(form.fuel_cost_per_mile) : undefined,
       };
 
       if (isEditing) {
@@ -164,6 +173,8 @@ export function TruckFormSheet({ open, onOpenChange, truck, onSuccess }: TruckFo
           truck_name: form.truck_name || undefined,
           empty_weight: form.empty_weight ? parseFloat(form.empty_weight) : undefined,
           driver_id: form.driver_id ? parseInt(form.driver_id) : undefined,
+          fuel_type: form.fuel_type || undefined,
+          fuel_cost_per_mile: form.fuel_cost_per_mile ? parseFloat(form.fuel_cost_per_mile) : undefined,
         });
       }
       onOpenChange(false);
@@ -363,6 +374,40 @@ export function TruckFormSheet({ open, onOpenChange, truck, onSuccess }: TruckFo
               )}
             </div>
           )}
+
+          <div className="border-t border-zinc-200 dark:border-zinc-700 pt-4 mt-4">
+            <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">⛽ Configuración de Combustible</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="fuel_type">Tipo de Combustible</Label>
+                <select
+                  id="fuel_type"
+                  value={form.fuel_type}
+                  onChange={(e) => setForm({ ...form, fuel_type: e.target.value })}
+                  className="flex w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-transparent px-3 py-2 text-sm"
+                >
+                  <option value="">Seleccionar</option>
+                  {FUEL_TYPES.map((ft) => (
+                    <option key={ft} value={ft}>
+                      {ft === "diesel" ? "Diesel" : "Gasolina"}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="fuel_cost_per_mile">Costo por Milla ($/mi)</Label>
+                <Input
+                  id="fuel_cost_per_mile"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={form.fuel_cost_per_mile}
+                  onChange={(e) => setForm({ ...form, fuel_cost_per_mile: e.target.value })}
+                  placeholder="0.60"
+                />
+              </div>
+            </div>
+          </div>
 
           <div className="flex justify-end gap-3 pt-4">
             <Button

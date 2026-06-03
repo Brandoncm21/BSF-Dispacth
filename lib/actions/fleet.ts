@@ -62,6 +62,8 @@ export interface TruckWithSmartStatus {
   driver_id: number | null;
   driver_first_name: string | null;
   driver_last_name: string | null;
+  fuel_type: string | null;
+  fuel_cost_per_mile: number | null;
 }
 
 export interface TruckSearchRow {
@@ -82,6 +84,8 @@ export interface TruckSearchRow {
   status_id: number;
   status_name: string | null;
   total_count?: number;
+  fuel_type: string | null;
+  fuel_cost_per_mile: number | null;
 }
 
 export interface MaintenanceRecord {
@@ -559,6 +563,8 @@ export async function createTruck(data: {
   truck_name?: string;
   empty_weight?: number;
   driver_id?: number;
+  fuel_type?: string;
+  fuel_cost_per_mile?: number;
 }) {
   const supabase = await getSupabaseServerClient();
 
@@ -576,6 +582,8 @@ export async function createTruck(data: {
       truck_name: data.truck_name || null,
       empty_weight: data.empty_weight || null,
       driver_id: data.driver_id || null,
+      fuel_type: data.fuel_type || null,
+      fuel_cost_per_mile: data.fuel_cost_per_mile || null,
     })
     .select("truck_id")
     .single();
@@ -600,6 +608,8 @@ export async function updateTruck(
     truck_name?: string;
     empty_weight?: number;
     driver_id?: number;
+    fuel_type?: string;
+    fuel_cost_per_mile?: number;
   }
 ) {
   const supabase = await getSupabaseServerClient();
@@ -615,6 +625,8 @@ export async function updateTruck(
   if (data.truck_name !== undefined) updates.truck_name = data.truck_name || null;
   if (data.empty_weight !== undefined) updates.empty_weight = data.empty_weight || null;
   if (data.driver_id !== undefined) updates.driver_id = data.driver_id || null;
+  if (data.fuel_type !== undefined) updates.fuel_type = data.fuel_type || null;
+  if (data.fuel_cost_per_mile !== undefined) updates.fuel_cost_per_mile = data.fuel_cost_per_mile || null;
 
   const { error } = await supabase
     .from("trucks")
