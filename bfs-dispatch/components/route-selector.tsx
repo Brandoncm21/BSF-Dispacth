@@ -31,7 +31,7 @@ export function RouteSelector({ value, onChange, label, error }: RouteSelectorPr
       const data = await getRoutesWithDetails();
       const routeOptions: RouteOption[] = data.map((r) => ({
         id: r.route_id,
-        label: `${r.origin.city_name}, ${r.origin.state_name} → ${r.destination.city_name}, ${r.destination.state_name}`,
+        label: `${r.origin.formatted_address} → ${r.destination.formatted_address}`,
         miles: r.miles,
       }));
       setRoutes(routeOptions);

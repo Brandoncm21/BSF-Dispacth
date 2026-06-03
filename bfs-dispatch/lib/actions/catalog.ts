@@ -41,8 +41,8 @@ export async function searchCarriers(
   const total = rows.length > 0 ? Number(rows[0].total_count) : 0;
   const mapped = rows.map((r: Record<string, unknown>) => ({
     ...r,
-    company_name: r.first_name,
-    owner_name: r.last_name,
+    company_name: r.company_name || r.first_name,
+    owner_name: r.owner_name || r.last_name,
     record_status: r.status_name ? { status_name: r.status_name } : null,
   }));
   return { data: mapped, count: total };

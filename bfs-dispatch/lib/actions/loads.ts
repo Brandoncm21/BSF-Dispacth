@@ -17,15 +17,15 @@ const createLoadSchema = z.object({
     (val) => val === "" || val === null ? null : Number(val),
     z.number().int().positive().nullable().optional()
   ),
-  rate: z.coerce.number().min(0, "Rate es requerido"),
+  rate: z.coerce.number().optional().nullable(),
   dispatch_fee_pct: z.coerce.number().min(0).max(100).optional().nullable(),
   weight_lbs: z.coerce.number().optional().nullable(),
   load_data: z.string().optional().nullable(),
   factoring: z.boolean().default(false),
   load_status: z.string().default(LOAD_STATUS.PENDING),
   paid_status: z.string().default(PAID_STATUS.UNPAID),
-  picked_up_at: z.string().optional().nullable(),
-  delivered_at: z.string().optional().nullable(),
+  picked_up_at: z.string().min(1, "Fecha de recogida es requerida"),
+  delivered_at: z.string().min(1, "Fecha de entrega es requerida"),
 });
 
 export async function createLoad(formData: z.infer<typeof createLoadSchema>) {
@@ -80,6 +80,8 @@ export async function createLoad(formData: z.infer<typeof createLoadSchema>) {
     insertData.dispatcher_id = dispatcherId;
   }
 
+  insertData.confirmed_at = new Date().toISOString();
+
   const { data: newLoad, error: loadError } = await supabase
     .from("loads")
     .insert(insertData)
@@ -89,6 +91,17 @@ export async function createLoad(formData: z.infer<typeof createLoadSchema>) {
   if (loadError) {
     console.error("[createLoad]", loadError.message, loadError.hint);
     return { error: loadError.message };
+  }
+
+  if (dispatcherId) {
+    await supabase.from("load_status_history").insert({
+      load_id: newLoad.load_id,
+      old_status: null,
+      new_status: data.load_status || LOAD_STATUS.PENDING,
+      changed_by: dispatcherId,
+      changed_at: new Date().toISOString(),
+      notes: "Carga creada",
+    });
   }
 
   return { success: true, load_id: newLoad.load_id };
@@ -107,15 +120,15 @@ const updateLoadSchema = z.object({
     (val) => val === "" || val === null ? null : Number(val),
     z.number().int().positive().nullable().optional()
   ),
-  rate: z.coerce.number().min(0, "Rate es requerido").optional(),
+  rate: z.coerce.number().optional().nullable(),
   dispatch_fee_pct: z.coerce.number().min(0).max(100).optional().nullable(),
   weight_lbs: z.coerce.number().optional().nullable(),
   load_data: z.string().optional().nullable(),
   factoring: z.boolean().optional(),
   load_status: z.string().optional(),
   paid_status: z.string().optional(),
-  picked_up_at: z.string().optional().nullable(),
-  delivered_at: z.string().optional().nullable(),
+  picked_up_at: z.string().min(1, "Fecha de recogida es requerida").optional(),
+  delivered_at: z.string().min(1, "Fecha de entrega es requerida").optional(),
 });
 
 export async function updateLoad(loadId: number, formData: z.infer<typeof updateLoadSchema>) {
@@ -132,6 +145,20 @@ export async function updateLoad(loadId: number, formData: z.infer<typeof update
   }
 
   const data = result.data;
+
+  const { data: { user } } = await supabase.auth.getUser();
+
+  let dispatcherId: number | null = null;
+  if (user) {
+    const { data: employee } = await supabase
+      .from("employees")
+      .select("employee_id")
+      .eq("auth_user_id", user.id)
+      .maybeSingle();
+    if (employee) {
+      dispatcherId = employee.employee_id;
+    }
+  }
 
   const updateData: Record<string, unknown> = {};
   if (data.carrier_id !== undefined) updateData.carrier_id = data.carrier_id;
@@ -150,6 +177,8 @@ export async function updateLoad(loadId: number, formData: z.infer<typeof update
   if (data.picked_up_at !== undefined) updateData.picked_up_at = data.picked_up_at || null;
   if (data.delivered_at !== undefined) updateData.delivered_at = data.delivered_at || null;
 
+  updateData.updated_at = new Date().toISOString();
+
   const { error } = await supabase
     .from("loads")
     .update(updateData)
@@ -159,6 +188,24 @@ export async function updateLoad(loadId: number, formData: z.infer<typeof update
     console.error("[updateLoad]", error.message, error.hint);
     return { error: error.message };
   }
+
+  if (data.load_status && dispatcherId) {
+    const { data: oldLoad } = await supabase
+      .from("loads")
+      .select("load_status")
+      .eq("load_id", loadId)
+      .single();
+
+    await supabase.from("load_status_history").insert({
+      load_id: loadId,
+      old_status: oldLoad?.load_status || null,
+      new_status: data.load_status,
+      changed_by: dispatcherId,
+      changed_at: new Date().toISOString(),
+      notes: null,
+    });
+  }
+
   return { success: true };
 }
 
@@ -180,15 +227,42 @@ export async function deleteLoad(loadId: number) {
 export async function updateLoadStatus(loadId: number, status: string) {
   const supabase = await getSupabaseServerClient();
 
+  const { data: oldLoad } = await supabase
+    .from("loads")
+    .select("load_status")
+    .eq("load_id", loadId)
+    .single();
+
   const { error } = await supabase
     .from("loads")
-    .update({ load_status: status })
+    .update({ load_status: status, updated_at: new Date().toISOString() })
     .eq("load_id", loadId);
 
   if (error) {
     console.error("[updateLoadStatus]", error.message, error.hint);
     return { error: error.message };
   }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  let changedBy: number | null = null;
+  if (user) {
+    const { data: employee } = await supabase
+      .from("employees")
+      .select("employee_id")
+      .eq("auth_user_id", user.id)
+      .maybeSingle();
+    if (employee) changedBy = employee.employee_id;
+  }
+
+  await supabase.from("load_status_history").insert({
+    load_id: loadId,
+    old_status: oldLoad?.load_status || null,
+    new_status: status,
+    changed_by: changedBy,
+    changed_at: new Date().toISOString(),
+    notes: null,
+  });
+
   return { success: true };
 }
 

@@ -46,7 +46,8 @@ export type TruckStatus = 'active' | 'inactive' | 'maintenance' | 'in_route';
 export interface TruckWithSmartStatus {
   truck_id: number;
   unit_number: string;
-  truck_type: string;
+  vehicle_type: string;
+  capacity: string | null;
   carrier_id: number;
   carrier_name: string;
   operational_status: string;
@@ -61,6 +62,8 @@ export interface TruckWithSmartStatus {
   driver_id: number | null;
   driver_first_name: string | null;
   driver_last_name: string | null;
+  fuel_type: string | null;
+  fuel_cost_per_mile: number | null;
 }
 
 export interface TruckSearchRow {
@@ -81,6 +84,8 @@ export interface TruckSearchRow {
   status_id: number;
   status_name: string | null;
   total_count?: number;
+  fuel_type: string | null;
+  fuel_cost_per_mile: number | null;
 }
 
 export interface MaintenanceRecord {
@@ -314,6 +319,81 @@ export async function getTruckLoadHistory(truckId: number, days: number = 30): P
   return data as TruckLoadHistory[];
 }
 
+export type StatusHistoryEvent = {
+  history_id: number;
+  load_id: number;
+  load_number: string | null;
+  old_status: string | null;
+  new_status: string;
+  changed_at: string;
+  notes: string | null;
+  employee_name: string;
+};
+
+export async function getTruckStatusHistory(truckId: number, days: number = 30): Promise<StatusHistoryEvent[]> {
+  const supabase = await getSupabaseServerClient();
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+
+  const { data: truckLoads, error: tlError } = await supabase
+    .from("loads")
+    .select("load_id, load_number")
+    .eq("truck_id", truckId)
+    .gte("booked_at", since.toISOString());
+
+  if (tlError) {
+    console.error("[getTruckStatusHistory] loads:", tlError.message);
+    throw tlError;
+  }
+
+  const loadIds = (truckLoads || []).map((l) => l.load_id);
+  if (loadIds.length === 0) return [];
+
+  const { data: employees, error: empError } = await supabase
+    .from("employees")
+    .select("employee_id, first_name, last_name");
+
+  if (empError) {
+    console.error("[getTruckStatusHistory] employees:", empError.message);
+    throw empError;
+  }
+
+  const empLookup = new Map(
+    (employees || []).map((e: Record<string, unknown>) => [e.employee_id, e])
+  );
+
+  const loadNumberMap = new Map(
+    (truckLoads || []).map((l: Record<string, unknown>) => [l.load_id, l.load_number])
+  );
+
+  const { data: history, error: histError } = await supabase
+    .from("load_status_history")
+    .select("*")
+    .in("load_id", loadIds)
+    .order("changed_at", { ascending: false });
+
+  if (histError) {
+    console.error("[getTruckStatusHistory] history:", histError.message);
+    throw histError;
+  }
+
+  return (history || []).map((r: Record<string, unknown>) => {
+    const empInfo = empLookup.get(r.changed_by as number) as Record<string, unknown> | undefined;
+    return {
+      history_id: r.history_id as number,
+      load_id: r.load_id as number,
+      load_number: (loadNumberMap.get(r.load_id as number) as string) || null,
+      old_status: r.old_status as string | null,
+      new_status: r.new_status as string,
+      changed_at: r.changed_at as string,
+      notes: r.notes as string | null,
+      employee_name: empInfo
+        ? `${(empInfo.first_name as string) || ""} ${(empInfo.last_name as string) || ""}`.trim()
+        : "Sistema",
+    };
+  });
+}
+
 export async function getFleetOverview() {
   const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase
@@ -453,7 +533,10 @@ export async function searchTrucks(
     driver_last_name: r.driver_last_name,
     carrier_company_name: r.carrier_company_name,
     status_id: r.status_id,
-    record_status: r.status_name ? { status_name: r.status_name as string } : null,
+    status_name: r.status_name,
+    total_count: r.total_count,
+    fuel_type: r.fuel_type,
+    fuel_cost_per_mile: r.fuel_cost_per_mile,
   }));
   return { data: mapped, count: total };
 }
@@ -483,6 +566,8 @@ export async function createTruck(data: {
   truck_name?: string;
   empty_weight?: number;
   driver_id?: number;
+  fuel_type?: string;
+  fuel_cost_per_mile?: number;
 }) {
   const supabase = await getSupabaseServerClient();
 
@@ -500,6 +585,8 @@ export async function createTruck(data: {
       truck_name: data.truck_name || null,
       empty_weight: data.empty_weight || null,
       driver_id: data.driver_id || null,
+      fuel_type: data.fuel_type || null,
+      fuel_cost_per_mile: data.fuel_cost_per_mile || null,
     })
     .select("truck_id")
     .single();
@@ -524,6 +611,8 @@ export async function updateTruck(
     truck_name?: string;
     empty_weight?: number;
     driver_id?: number;
+    fuel_type?: string;
+    fuel_cost_per_mile?: number;
   }
 ) {
   const supabase = await getSupabaseServerClient();
@@ -539,6 +628,8 @@ export async function updateTruck(
   if (data.truck_name !== undefined) updates.truck_name = data.truck_name || null;
   if (data.empty_weight !== undefined) updates.empty_weight = data.empty_weight || null;
   if (data.driver_id !== undefined) updates.driver_id = data.driver_id || null;
+  if (data.fuel_type !== undefined) updates.fuel_type = data.fuel_type || null;
+  if (data.fuel_cost_per_mile !== undefined) updates.fuel_cost_per_mile = data.fuel_cost_per_mile || null;
 
   const { error } = await supabase
     .from("trucks")
@@ -624,6 +715,7 @@ export async function createBroker(data: {
   phone_number?: string;
   mc_number?: string;
   usdot_number?: string;
+  status_id?: number;
 }) {
   const supabase = await getSupabaseServerClient();
 
@@ -632,7 +724,7 @@ export async function createBroker(data: {
     last_name: data.last_name,
     email: data.email || null,
     phone_number: data.phone_number || null,
-    status_id: 1,
+    status_id: data.status_id ?? 1,
   };
   if (data.mc_number !== undefined) insertData.mc_number = data.mc_number;
   if (data.usdot_number !== undefined) insertData.usdot_number = data.usdot_number;
@@ -659,6 +751,7 @@ export async function updateBroker(
     phone_number?: string;
     mc_number?: string;
     usdot_number?: string;
+    status_id?: number;
   }
 ) {
   const supabase = await getSupabaseServerClient();
@@ -670,6 +763,7 @@ export async function updateBroker(
   if (data.phone_number !== undefined) updates.phone_number = data.phone_number;
   if (data.mc_number !== undefined) updates.mc_number = data.mc_number;
   if (data.usdot_number !== undefined) updates.usdot_number = data.usdot_number;
+  if (data.status_id !== undefined) updates.status_id = data.status_id;
 
   const { error } = await supabase
     .from("brokers")

@@ -8,7 +8,7 @@ import { RouteSelector } from "@/components/route-selector";
 import { CreatableSelect } from "@/components/creatable-select";
 import { TruckSelector } from "@/components/truck-selector";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
-import { getDriversByCarrier } from "@/lib/actions";
+import { getDriversByCarrier, getRoutesWithDetails } from "@/lib/actions";
 import { LOAD_STATUS, LOAD_STATUS_LABELS, PAID_STATUS } from "@/lib/constants";
 import { loadSchema, LoadForm as LoadFormType, SelectOption, LoadFormSubmitData, MAX_FILE_SIZE } from "@/types/load";
 
@@ -60,6 +60,7 @@ export const LoadForm = forwardRef<LoadFormHandle, LoadFormProps>(function LoadF
     status_id: 1,
     picked_up_at: "",
     delivered_at: "",
+    confirmed_digital: false,
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [rcFile, setRcFile] = useState<File | null>(null);
@@ -67,6 +68,9 @@ export const LoadForm = forwardRef<LoadFormHandle, LoadFormProps>(function LoadF
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [filteredDrivers, setFilteredDrivers] = useState<SelectOption[]>(drivers);
   const [dispatchFeePercent, setDispatchFeePercent] = useState<string>("");
+  const [fuelType, setFuelType] = useState<string | null>(null);
+  const [fuelCostPerMile, setFuelCostPerMile] = useState<number | null>(null);
+  const [routeMiles, setRouteMiles] = useState<number | null>(null);
 
   useEffect(() => {
     if (initialValues) {
@@ -115,6 +119,44 @@ export const LoadForm = forwardRef<LoadFormHandle, LoadFormProps>(function LoadF
       setFilteredDrivers(drivers);
     }
   };
+
+  // Fetch fuel info when truck changes
+  useEffect(() => {
+    if (!form.truck_id) {
+      setFuelType(null);
+      setFuelCostPerMile(null);
+      return;
+    }
+    supabase
+      .from("trucks")
+      .select("fuel_type, fuel_cost_per_mile")
+      .eq("truck_id", parseInt(form.truck_id))
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setFuelType(data.fuel_type);
+          setFuelCostPerMile(data.fuel_cost_per_mile);
+        }
+      });
+  }, [form.truck_id]);
+
+  // Fetch route miles when route changes
+  useEffect(() => {
+    if (!form.route_id) {
+      setRouteMiles(null);
+      return;
+    }
+    getRoutesWithDetails()
+      .then((routes) => {
+        const route = routes.find((r) => r.route_id === parseInt(form.route_id));
+        if (route) setRouteMiles(route.miles);
+      })
+      .catch(() => {});
+  }, [form.route_id]);
+
+  const estimatedFuelCost = routeMiles && fuelCostPerMile
+    ? Math.round(routeMiles * fuelCostPerMile * 100) / 100
+    : null;
 
   useImperativeHandle(ref, () => ({
     submit: handleSubmit,
@@ -197,30 +239,82 @@ export const LoadForm = forwardRef<LoadFormHandle, LoadFormProps>(function LoadF
         />
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="picked_up_at">Fecha/Hora Recogida</Label>
-        <Input
-          id="picked_up_at"
-          type="datetime-local"
-          value={form.picked_up_at}
-          onChange={(e) => setForm({ ...form, picked_up_at: e.target.value })}
-        />
-        {formErrors.picked_up_at && <p className="text-xs text-red-500">{formErrors.picked_up_at}</p>}
-      </div>
+      {routeMiles && fuelCostPerMile && (
+        <div className="col-span-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+          <p className="text-xs font-medium text-amber-700 dark:text-amber-400 mb-1">⛽ Costo Estimado de Combustible</p>
+          <div className="grid grid-cols-4 gap-3 text-sm">
+            <div>
+              <span className="text-amber-600 dark:text-amber-300">Millas</span>
+              <p className="font-semibold text-amber-900 dark:text-amber-100">{routeMiles} mi</p>
+            </div>
+            <div>
+              <span className="text-amber-600 dark:text-amber-300">Tipo</span>
+              <p className="font-semibold text-amber-900 dark:text-amber-100 capitalize">{fuelType || "—"}</p>
+            </div>
+            <div>
+              <span className="text-amber-600 dark:text-amber-300">$/mi</span>
+              <p className="font-semibold text-amber-900 dark:text-amber-100">${fuelCostPerMile.toFixed(2)}</p>
+            </div>
+            <div>
+              <span className="text-amber-600 dark:text-amber-300">Total Est.</span>
+              <p className="font-semibold text-amber-900 dark:text-amber-100">
+                ${estimatedFuelCost!.toLocaleString("es-CR", { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
-      <div className="space-y-2">
-        <Label htmlFor="delivered_at">Fecha/Hora Entrega</Label>
-        <Input
-          id="delivered_at"
-          type="datetime-local"
-          value={form.delivered_at}
-          onChange={(e) => setForm({ ...form, delivered_at: e.target.value })}
-        />
-        {formErrors.delivered_at && <p className="text-xs text-red-500">{formErrors.delivered_at}</p>}
-      </div>
+      {routeMiles && form.rate && parseFloat(form.rate) > 0 && (
+        <div className="col-span-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+          <p className="text-xs font-medium text-blue-700 dark:text-blue-400 mb-1">💰 Rate por Milla</p>
+          <div className="flex items-center justify-between text-sm">
+            <div>
+              <span className="text-blue-600 dark:text-blue-300">Rate</span>
+              <p className="font-semibold text-blue-900 dark:text-blue-100">
+                ${parseFloat(form.rate).toLocaleString("es-CR", { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+            <div className="text-blue-400">÷</div>
+            <div>
+              <span className="text-blue-600 dark:text-blue-300">Millas</span>
+              <p className="font-semibold text-blue-900 dark:text-blue-100">{routeMiles} mi</p>
+            </div>
+            <div className="text-blue-400">=</div>
+            <div>
+              <span className="text-blue-600 dark:text-blue-300">Rate/milla</span>
+              <p className="font-semibold text-blue-900 dark:text-blue-100">
+                ${(parseFloat(form.rate) / routeMiles).toFixed(2)}/mi
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
-      <div className="col-span-2 -mt-2">
-        <p className="text-xs text-zinc-400 dark:text-zinc-500">Zona horaria: Costa Rica (UTC-6)</p>
+      <div className="col-span-2 grid grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <Label htmlFor="picked_up_at" className="text-xs">Pickup</Label>
+          <Input
+            id="picked_up_at"
+            type="datetime-local"
+            value={form.picked_up_at}
+            onChange={(e) => setForm({ ...form, picked_up_at: e.target.value })}
+            className="text-sm py-1.5"
+          />
+          {formErrors.picked_up_at && <p className="text-xs text-red-500">{formErrors.picked_up_at}</p>}
+        </div>
+
+        <div className="space-y-1">
+          <Label htmlFor="delivered_at" className="text-xs">Delivery</Label>
+          <Input
+            id="delivered_at"
+            type="datetime-local"
+            value={form.delivered_at}
+            onChange={(e) => setForm({ ...form, delivered_at: e.target.value })}
+            className="text-sm py-1.5"
+          />
+          {formErrors.delivered_at && <p className="text-xs text-red-500">{formErrors.delivered_at}</p>}
+        </div>
       </div>
 
       <CreatableSelect
@@ -242,7 +336,7 @@ export const LoadForm = forwardRef<LoadFormHandle, LoadFormProps>(function LoadF
       />
 
       <div className="space-y-2">
-        <Label htmlFor="rate">Rate ($) *</Label>
+        <Label htmlFor="rate">Rate ($)</Label>
         <Input
           id="rate"
           type="number"
@@ -252,21 +346,15 @@ export const LoadForm = forwardRef<LoadFormHandle, LoadFormProps>(function LoadF
           onChange={(e) => setForm({ ...form, rate: e.target.value })}
           placeholder="0.00"
         />
-        {formErrors.rate && <p className="text-xs text-red-500">{formErrors.rate}</p>}
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="dispatch_fee_pct">Dispatch Fee (%)</Label>
-        <Input
-          id="dispatch_fee_pct"
-          type="number"
-          min="0"
-          max="100"
-          step="0.1"
-          value={form.dispatch_fee_pct}
-          onChange={(e) => setForm({ ...form, dispatch_fee_pct: e.target.value })}
-          placeholder="3-8%"
-        />
+        <Label>Dispatch Fee (%)</Label>
+        <div className="flex items-center h-10 px-3 rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-800 text-sm">
+          <span className="font-medium text-zinc-700 dark:text-zinc-300">
+            {dispatchFeePercent ? `${(parseFloat(dispatchFeePercent) * 100).toFixed(1)}%` : "—"}
+          </span>
+        </div>
       </div>
 
       {computedDispatchFee > 0 && (
@@ -326,7 +414,26 @@ export const LoadForm = forwardRef<LoadFormHandle, LoadFormProps>(function LoadF
         </select>
       </div>
 
-      <div className="col-span-2 border-t border-zinc-200 dark:border-zinc-700 pt-4 mt-4">
+      <div className="col-span-2 border-t border-zinc-200 dark:border-zinc-700 pt-4 mt-2">
+        <div className="flex items-start gap-3 p-3 bg-zinc-50 dark:bg-zinc-900 rounded-md">
+          <input
+            type="checkbox"
+            id="confirmed_digital"
+            checked={form.confirmed_digital}
+            onChange={(e) => setForm({ ...form, confirmed_digital: e.target.checked })}
+            className="mt-0.5 h-4 w-4"
+          />
+          <Label htmlFor="confirmed_digital" className="text-sm leading-relaxed cursor-pointer">
+            Confirmo digitalmente que los datos de esta carga son correctos y acepto
+            el registro bajo mi usuario de operaciones.
+          </Label>
+        </div>
+        {formErrors.confirmed_digital && (
+          <p className="text-xs text-red-500 mt-1 ml-1">{formErrors.confirmed_digital}</p>
+        )}
+      </div>
+
+      <div className="col-span-2 border-t border-zinc-200 dark:border-zinc-700 pt-4 mt-2">
         <Label className="text-sm font-medium mb-2 block">Documentos (PDF, máx 5MB)</Label>
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
