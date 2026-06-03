@@ -84,6 +84,12 @@ lib/actions/
 - Vitest v4 with jsdom environment
 - Tests live alongside source files: `*.test.ts`, `*.test.tsx`
 - Run `npm test` or `npx vitest run`
+- Coverage: `npm test -- --coverage` (v8 provider, meta threshold 80%)
+- Mock infra: `@supabase/ssr` and `lib/actions/core.ts` globally mocked in `tests/setup.ts`
+  - No real DB connection during tests
+  - Add per-test MSW handlers for integration tests when needed
+- Pure math functions in `lib/calculations.ts` — no mocks required
+- Test files: `lib/constants.test.ts`, `lib/format.test.ts`, `lib/errors.test.ts`, `lib/calculations.test.ts`, `config/roles.test.ts`
 
 ## Database Schema
 
