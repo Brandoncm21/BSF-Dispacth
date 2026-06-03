@@ -29,6 +29,9 @@ export default function TraceabilityPage() {
   const [trackingMarkers, setTrackingMarkers] = useState<Array<{
     load_id: number; load_number: string | null; unit_number: string | null;
     lat: number; lng: number; last_reported: string;
+    originLat?: number | null; originLng?: number | null; originAddress?: string | null;
+    destLat?: number | null; destLng?: number | null; destAddress?: string | null;
+    waypoints?: Array<{ sequence: number; lat: number | null; lng: number | null; type: "pickup" | "delivery"; address: string | null }>;
   }>>([]);
 
   const fetchData = useCallback(async () => {
@@ -50,11 +53,55 @@ export default function TraceabilityPage() {
       const inRouteTrucks = Object.values(fleetData).flat().filter((t) => t.availability_status === "en_ruta" && t.current_load_id);
       if (inRouteTrucks.length > 0) {
         const loadIds = inRouteTrucks.map((t) => t.current_load_id!);
-        const { data: latestCheckpoints } = await supabase
-          .from("driver_checkpoints")
-          .select("load_id, lat, lng, recorded_at, loads!inner(load_number, trucks!inner(unit_number))")
-          .in("load_id", loadIds)
-          .order("recorded_at", { ascending: false });
+        const [checkpointsResult, routesResult] = await Promise.all([
+          supabase
+            .from("driver_checkpoints")
+            .select("load_id, lat, lng, recorded_at, loads!inner(load_number, trucks!inner(unit_number))")
+            .in("load_id", loadIds)
+            .order("recorded_at", { ascending: false }),
+          supabase
+            .from("loads")
+            .select("load_id, routes(origin_location_id, destination_location_id, waypoints)")
+            .in("load_id", loadIds),
+        ]);
+
+        // Fetch location details for routes
+        const locationIds = new Set<number>();
+        (routesResult.data || []).forEach((lr: Record<string, unknown>) => {
+          const r = lr.routes as Record<string, unknown> || {};
+          if (r.origin_location_id) locationIds.add(r.origin_location_id as number);
+          if (r.destination_location_id) locationIds.add(r.destination_location_id as number);
+          // Also collect waypoint location_ids
+          const waypoints = r.waypoints as Array<Record<string, unknown>> || [];
+          waypoints.forEach((wp: Record<string, unknown>) => {
+            if (wp.location_id) locationIds.add(wp.location_id as number);
+          });
+        });
+
+        let locationMap: Record<number, { lat: number; lng: number; formatted_address: string }> = {};
+        if (locationIds.size > 0) {
+          const { data: locs } = await supabase
+            .from("locations")
+            .select("location_id, lat, lng, formatted_address")
+            .in("location_id", [...locationIds]);
+          if (locs) {
+            locs.forEach((loc: Record<string, unknown>) => {
+              locationMap[loc.location_id as number] = {
+                lat: Number(loc.lat),
+                lng: Number(loc.lng),
+                formatted_address: (loc.formatted_address as string) || "",
+              };
+            });
+          }
+        }
+
+        // Build a route lookup by load_id
+        const routeByLoad: Record<number, Record<string, unknown>> = {};
+        (routesResult.data || []).forEach((lr: Record<string, unknown>) => {
+          routeByLoad[lr.load_id as number] = (lr.routes as Record<string, unknown>) || {};
+        });
+
+        const latestCheckpoints = checkpointsResult.data;
         if (latestCheckpoints) {
           const seen = new Set<number>();
           const markers = latestCheckpoints
@@ -66,6 +113,23 @@ export default function TraceabilityPage() {
             })
             .map((cp: Record<string, unknown>) => {
               const loadData = cp.loads as Record<string, unknown>;
+              const route = routeByLoad[cp.load_id as number] || {};
+              const originLoc = route.origin_location_id ? locationMap[route.origin_location_id as number] : null;
+              const destLoc = route.destination_location_id ? locationMap[route.destination_location_id as number] : null;
+              const rawWaypoints = (route.waypoints as Array<Record<string, unknown>>) || [];
+              const waypoints = rawWaypoints
+                .map((wp: Record<string, unknown>) => {
+                  const loc = wp.location_id ? locationMap[wp.location_id as number] : null;
+                  return {
+                    sequence: Number(wp.sequence) || 0,
+                    lat: loc?.lat ?? (wp.lat ? Number(wp.lat) : null),
+                    lng: loc?.lng ?? (wp.lng ? Number(wp.lng) : null),
+                    type: (wp.type as "pickup" | "delivery") || "pickup",
+                    address: loc?.formatted_address || (wp.address as string) || null,
+                  };
+                })
+                .filter((wp: { lat: number | null }) => wp.lat != null);
+
               return {
                 load_id: cp.load_id as number,
                 load_number: (loadData?.load_number as string) || null,
@@ -73,6 +137,13 @@ export default function TraceabilityPage() {
                 lat: Number(cp.lat),
                 lng: Number(cp.lng),
                 last_reported: cp.recorded_at as string,
+                originLat: originLoc?.lat ?? null,
+                originLng: originLoc?.lng ?? null,
+                originAddress: originLoc?.formatted_address ?? null,
+                destLat: destLoc?.lat ?? null,
+                destLng: destLoc?.lng ?? null,
+                destAddress: destLoc?.formatted_address ?? null,
+                waypoints: waypoints.length > 0 ? waypoints : undefined,
               };
             });
           setTrackingMarkers(markers);

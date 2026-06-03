@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -11,7 +11,9 @@ import { getLoadDocuments, getDocumentSignedUrl, deleteLoadDocument, getCheckpoi
 import { formatTimestamp, formatDollarPerMile } from "@/lib/format";
 import { LOAD_STATUS_LABELS, LOAD_STATUS_COLORS, LoadStatus } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 import type { Load } from "@/types/load";
+import type { WaypointData } from "@/components/tracking-map";
 
 const TrackingMapWithNoSSR = dynamic(
   () => import("@/components/tracking-map").then((mod) => ({ default: mod.TrackingMap })),
@@ -75,7 +77,7 @@ export function LoadDetailModal({ load, open, onOpenChange }: Props) {
         <div className="pt-4">
           {activeTab === "general" && <TabGeneral load={load} />}
           {activeTab === "docs" && <TabDocs loadId={load.load_id} />}
-          {activeTab === "tracking" && <TabTracking loadId={load.load_id} />}
+          {activeTab === "tracking" && <TabTracking loadId={load.load_id} load={load} />}
         </div>
       </DialogContent>
     </Dialog>
@@ -216,23 +218,95 @@ function TabDocs({ loadId }: { loadId: number }) {
   );
 }
 
-function TabTracking({ loadId }: { loadId: number }) {
+function TabTracking({ loadId, load }: { loadId: number; load: Load }) {
   const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
   const [loading, setLoading] = useState(true);
+  const [routeOrigin, setRouteOrigin] = useState<{ lat: number; lng: number; address: string } | null>(null);
+  const [routeDest, setRouteDest] = useState<{ lat: number; lng: number; address: string } | null>(null);
+  const [waypoints, setWaypoints] = useState<WaypointData[]>([]);
+  const supabase = useRef(createSupabaseBrowserClient());
 
   useEffect(() => {
-    async function fetchCheckpoints() {
+    async function fetchTrackingData() {
       setLoading(true);
       try {
         const data = await getCheckpointHistory(loadId);
         setCheckpoints(data as Checkpoint[]);
+
+        // Fetch route info for origin/dest/waypoints
+        const { data: loadData } = await supabase.current
+          .from("loads")
+          .select("route_id")
+          .eq("load_id", loadId)
+          .maybeSingle();
+
+        if (loadData?.route_id) {
+          const { data: route } = await supabase.current
+            .from("routes")
+            .select("origin_location_id, destination_location_id, waypoints")
+            .eq("route_id", loadData.route_id)
+            .maybeSingle();
+
+          if (route) {
+            const locationIds: number[] = [];
+            if (route.origin_location_id) locationIds.push(route.origin_location_id);
+            if (route.destination_location_id) locationIds.push(route.destination_location_id);
+
+            const rawWaypoints = (route.waypoints as Array<Record<string, unknown>>) || [];
+            rawWaypoints.forEach((wp) => {
+              if (wp.location_id) locationIds.push(wp.location_id as number);
+            });
+
+            if (locationIds.length > 0) {
+              const { data: locs } = await supabase.current
+                .from("locations")
+                .select("location_id, lat, lng, formatted_address")
+                .in("location_id", locationIds);
+
+              const locMap: Record<number, { lat: number; lng: number; address: string }> = {};
+              if (locs) {
+                locs.forEach((loc: Record<string, unknown>) => {
+                  locMap[loc.location_id as number] = {
+                    lat: Number(loc.lat),
+                    lng: Number(loc.lng),
+                    address: (loc.formatted_address as string) || "",
+                  };
+                });
+              }
+
+              if (route.origin_location_id && locMap[route.origin_location_id]) {
+                setRouteOrigin(locMap[route.origin_location_id]);
+              }
+
+              if (route.destination_location_id && locMap[route.destination_location_id]) {
+                setRouteDest(locMap[route.destination_location_id]);
+              }
+
+              if (rawWaypoints.length > 0) {
+                const mapped = rawWaypoints
+                  .map((wp: Record<string, unknown>) => {
+                    const loc = wp.location_id ? locMap[wp.location_id as number] : null;
+                    return {
+                      sequence: Number(wp.sequence) || 0,
+                      lat: loc?.lat ?? (wp.lat ? Number(wp.lat) : null),
+                      lng: loc?.lng ?? (wp.lng ? Number(wp.lng) : null),
+                      type: (wp.type as "pickup" | "delivery") || "pickup",
+                      address: loc?.address || (wp.address as string) || null,
+                    };
+                  })
+                  .filter((wp) => wp.lat != null && wp.lng != null);
+                setWaypoints(mapped);
+              }
+            }
+          }
+        }
       } catch {
         setCheckpoints([]);
       } finally {
         setLoading(false);
       }
     }
-    fetchCheckpoints();
+    fetchTrackingData();
   }, [loadId]);
 
   if (loading) {
@@ -241,7 +315,7 @@ function TabTracking({ loadId }: { loadId: number }) {
 
   return (
     <div className="space-y-4">
-      {checkpoints.length === 0 ? (
+      {checkpoints.length === 0 && !routeOrigin && !routeDest ? (
         <div className="text-center py-12 text-zinc-500">
           <MapPin className="h-12 w-12 mx-auto mb-3 text-zinc-300" />
           <p>No hay checkpoints registrados para esta carga</p>
@@ -254,6 +328,13 @@ function TabTracking({ loadId }: { loadId: number }) {
               checkpoints={checkpoints}
               height="350px"
               showPopup={true}
+              originLng={routeOrigin?.lng}
+              originLat={routeOrigin?.lat}
+              originAddress={routeOrigin?.address}
+              destLng={routeDest?.lng}
+              destLat={routeDest?.lat}
+              destAddress={routeDest?.address}
+              waypoints={waypoints}
             />
           </div>
           <div className="space-y-2 max-h-[200px] overflow-y-auto">

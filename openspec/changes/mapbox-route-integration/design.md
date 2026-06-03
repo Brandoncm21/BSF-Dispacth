@@ -41,6 +41,28 @@
 - **Elegido**: Script Node.js ejecutado una vez
 - **Rationale**: Geocodificación masiva requiere llamadas a Mapbox API. SQL puro no puede hacer HTTP requests. Edge Function es overkill para una migración one-off.
 
+### D5: Waypoints como JSONB en `routes`
+- **Opciones**: Tabla separada `route_waypoints`, JSONB en `routes`, array de location_ids planos
+- **Elegido**: `routes.waypoints JSONB DEFAULT '[]'`
+- **Rationale**: Alineado con denormalización. Sin joins extra. Una misma ruta puede reutilizarse por múltiples cargas. Estructura: `[{sequence, location_id, type: "pickup"|"delivery", lat, lng}]`. `lat`/`lng` se almacenan inline para que el mapa pueda renderizar sin joins.
+
+### D6: Sistema de Marcadores Visuales
+- **Tipos**:
+
+| Tipo | Forma | Color | Etiqueta | Popup |
+|------|-------|-------|----------|-------|
+| Origen | Bandera (flag) | Verde `#10b981` | "O" | "Origen" + dirección |
+| Destino | Pin (inverted) | Rojo `#ef4444` | "D" | "Destino" + dirección |
+| Waypoint | Punto pequeño | Azul `#3b82f6` | — | Tipo (Pickup/Delivery) + dirección |
+
+- **Rationale**: Formas y colores distintos permiten identificación instantánea sin necesidad de leyenda. Las banderas/pines se implementan con SVG inline + CSS, sin assets externos.
+
+### D7: Geocodificación batch de datos históricos
+- **Opciones**: Solo texto sin coordenadas, geocodificar bajo demanda, geocodificar en batch
+- **Elegido**: Geocodificar en batch durante la migración
+- **Rationale**: Sin lat/lng los marcadores de origen/destino no pueden renderizarse. Mapbox Geocoding API soporta batch. Rate limit de 1 req/seg con reintentos.
+- **Implementación**: Script Node.js recorriendo todas las direcciones en `addresses→streets→cities→states`, llamando Mapbox Geocoding por cada una, guardando lat/lng en `locations`. Si falla, lat/lng quedan NULL.
+
 ## Risks / Trade-offs
 
 | Risk | Mitigation |

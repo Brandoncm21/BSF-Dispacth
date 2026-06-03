@@ -17,13 +17,14 @@ El flujo actual para crear una ruta en el formulario de Nueva Carga requiere un 
 - **New Capabilities**:
   - `mapbox-autocomplete`: Búsqueda de direcciones con Mapbox Places API
   - `route-cost-calculation`: Autocalculo de distancia y costos derivados
+  - `tracking-map-visuals`: Marcadores de origen/destino y waypoints en todos los mapas de tracking (`/traceability`, `LoadDetailModal`)
 - **Modified Capabilities**:
-  - `route-management`: Creación de rutas con Mapbox Autocomplete en vez de wizard anidado
-  - `loads-management`: Eliminación de dependencia a `origin_address_id`/`destination_address_id` en `loads`
+  - `route-management`: Creación de rutas con Mapbox Autocomplete en vez de wizard anidado. Soporte de waypoints múltiples (pickups/deliveries) via JSONB en `routes`
+  - `loads-management`: Eliminación de dependencia a `origin_address_id`/`destination_address_id` en `loads`. Tab "Mapa de Tracking" en modal muestra ruta completa con paradas
 
 ## Impact
 
-- Frontend: Nuevos componentes `MapboxAutocomplete`, `LocationPicker`, refactor de `NewRouteModal`
+- Frontend: Nuevos componentes `MapboxAutocomplete`, `LocationPicker`, refactor de `NewRouteModal`, actualización de `TrackingMap` con marcadores distintivos (origen/destino/waypoints)
 - Backend: Nueva tabla `locations`, migración SQL batch, nuevas server actions, deprecación de `getOrCreateAddress`/`getOrCreateStreet`/`getOrCreateCity`
-- Database: DROP de tablas `addresses`, `streets`, `cities`, ALTER de `loads` y `routes`, nuevos índices
+- Database: DROP de tablas `addresses`, `streets`, `cities`, ALTER de `loads` y `routes` (+ columna `waypoints` JSONB), nuevos índices
 - Breaking: Las vistas `routes_v`, `loads_v`, `v_sales_performance_extended` y funciones `search_loads`, `getRoutesWithDetails` requieren actualización

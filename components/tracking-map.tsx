@@ -21,6 +21,21 @@ type TruckMarker = {
   lat: number;
   lng: number;
   last_reported: string;
+  originLat?: number | null;
+  originLng?: number | null;
+  originAddress?: string | null;
+  destLat?: number | null;
+  destLng?: number | null;
+  destAddress?: string | null;
+  waypoints?: WaypointData[];
+};
+
+export type WaypointData = {
+  sequence: number;
+  lat?: number | null;
+  lng?: number | null;
+  type: "pickup" | "delivery";
+  address?: string | null;
 };
 
 type Props = {
@@ -31,8 +46,11 @@ type Props = {
   showPopup?: boolean;
   originLng?: number;
   originLat?: number;
+  originAddress?: string;
   destLng?: number;
   destLat?: number;
+  destAddress?: string;
+  waypoints?: WaypointData[];
 };
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
@@ -43,6 +61,37 @@ function getMarkerColor(hoursAgo: number): string {
   return "#ef4444";
 }
 
+function createOriginFlagElement(address?: string): HTMLElement {
+  const el = document.createElement("div");
+  el.innerHTML = `<svg width="32" height="40" viewBox="0 0 32 40" xmlns="http://www.w3.org/2000/svg">
+    <path d="M16 0C10 0 4 4 4 11c0 8 12 24 12 29 0-5 12-21 12-29 0-7-6-11-12-11z" fill="#10b981" stroke="white" stroke-width="2.5"/>
+    <circle cx="16" cy="11" r="5" fill="white"/>
+    <rect x="12.5" y="8" width="7" height="2" rx="1" fill="#10b981"/>
+    <rect x="12.5" y="11" width="7" height="2" rx="1" fill="#10b981"/>
+    <rect x="12.5" y="14" width="7" height="2" rx="1" fill="#10b981"/>
+  </svg>`;
+  el.className = "cursor-pointer origin-marker";
+  return el;
+}
+
+function createDestPinElement(address?: string): HTMLElement {
+  const el = document.createElement("div");
+  el.innerHTML = `<svg width="32" height="40" viewBox="0 0 32 40" xmlns="http://www.w3.org/2000/svg">
+    <path d="M16 0C10 0 4 4 4 11c0 8 12 24 12 29 0-5 12-21 12-29 0-7-6-11-12-11z" fill="#ef4444" stroke="white" stroke-width="2.5"/>
+    <circle cx="16" cy="11" r="5" fill="white"/>
+    <circle cx="16" cy="11" r="2.5" fill="#ef4444"/>
+  </svg>`;
+  el.className = "cursor-pointer dest-marker";
+  return el;
+}
+
+function createWaypointDotElement(sequence: number): HTMLElement {
+  const el = document.createElement("div");
+  el.style.cssText = `width:22px;height:22px;background:#3b82f6;border:2px solid white;border-radius:9999px;display:flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:700;box-shadow:0 1px 3px rgba(0,0,0,0.3);cursor:pointer;`;
+  el.textContent = String(sequence);
+  return el;
+}
+
 export function TrackingMap({
   truckMarkers,
   checkpoints,
@@ -51,8 +100,11 @@ export function TrackingMap({
   showPopup = true,
   originLng,
   originLat,
+  originAddress,
   destLng,
   destLat,
+  destAddress,
+  waypoints,
 }: Props) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -88,12 +140,12 @@ export function TrackingMap({
     };
   }, [interactive]);
 
-  // Add truck markers
+  // Add truck markers (with optional origin/dest/waypoints per truck)
   useEffect(() => {
     if (!map.current || !loaded || !truckMarkers) return;
     if (!MAPBOX_TOKEN) return;
 
-    // Clean up previous checkpoint markers if any
+    // Clean up previous markers
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
 
@@ -104,8 +156,18 @@ export function TrackingMap({
     if (map.current.getSource("checkpoint-route")) {
       map.current.removeSource("checkpoint-route");
     }
+    if (map.current.getLayer("planned-route-line")) {
+      map.current.removeLayer("planned-route-line");
+    }
+    if (map.current.getSource("planned-route")) {
+      map.current.removeSource("planned-route");
+    }
+
+    const bounds = new mapboxgl.LngLatBounds();
+    let hasCoords = false;
 
     truckMarkers.forEach((t) => {
+      // Render truck position marker
       const hoursAgo = (Date.now() - new Date(t.last_reported).getTime()) / 3600000;
       const el = document.createElement("div");
       el.className = "w-3 h-3 rounded-full border-2 border-white shadow-md cursor-pointer";
@@ -127,20 +189,66 @@ export function TrackingMap({
         .addTo(map.current!);
 
       markersRef.current.push(marker);
+      bounds.extend([t.lng, t.lat]);
+      hasCoords = true;
+
+      // Render origin flag for this truck (if available)
+      if (t.originLng != null && t.originLat != null) {
+        bounds.extend([t.originLng, t.originLat]);
+        const originPopupHtml = `<div class="text-xs"><strong class="text-emerald-600">Origen</strong><br/>${t.originAddress || ""}</div>`;
+        const originMarker = new mapboxgl.Marker({ element: createOriginFlagElement(t.originAddress || undefined), anchor: "bottom" })
+          .setLngLat([t.originLng, t.originLat])
+          .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(originPopupHtml))
+          .addTo(map.current!);
+        markersRef.current.push(originMarker);
+      }
+
+      // Render waypoints for this truck (if available)
+      if (t.waypoints && t.waypoints.length > 0) {
+        const sorted = [...t.waypoints].sort((a, b) => a.sequence - b.sequence);
+        sorted.forEach((wp) => {
+          if (wp.lat == null || wp.lng == null) return;
+          bounds.extend([wp.lng, wp.lat]);
+          const typeLabel = wp.type === "pickup" ? "Pickup" : "Delivery";
+          const wpPopupHtml = `<div class="text-xs">
+            <strong class="text-blue-500">${typeLabel}</strong><br/>
+            <span class="text-zinc-500">Parada #${wp.sequence}</span><br/>
+            ${wp.address || ""}
+          </div>`;
+          const wpMarker = new mapboxgl.Marker({ element: createWaypointDotElement(wp.sequence), anchor: "center" })
+            .setLngLat([wp.lng, wp.lat])
+            .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(wpPopupHtml))
+            .addTo(map.current!);
+          markersRef.current.push(wpMarker);
+        });
+      }
+
+      // Render destination pin for this truck (if available)
+      if (t.destLng != null && t.destLat != null) {
+        bounds.extend([t.destLng, t.destLat]);
+        const destPopupHtml = `<div class="text-xs"><strong class="text-red-500">Destino</strong><br/>${t.destAddress || ""}</div>`;
+        const destMarker = new mapboxgl.Marker({ element: createDestPinElement(t.destAddress || undefined), anchor: "bottom" })
+          .setLngLat([t.destLng, t.destLat])
+          .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(destPopupHtml))
+          .addTo(map.current!);
+        markersRef.current.push(destMarker);
+      }
     });
 
-    // Fit bounds for truck markers
-    if (truckMarkers.length > 0) {
-      const bounds = new mapboxgl.LngLatBounds();
-      truckMarkers.forEach((t) => bounds.extend([t.lng, t.lat]));
+    // Fit bounds for all markers
+    if (hasCoords) {
       map.current.fitBounds(bounds, { padding: 60, maxZoom: 10 });
     }
   }, [truckMarkers, loaded, showPopup]);
 
-  // Add checkpoint path for customer portal
+  // Add checkpoint path (fallback route line when origin/dest not provided)
   useEffect(() => {
     if (!map.current || !loaded || !checkpoints || checkpoints.length === 0) return;
     if (!MAPBOX_TOKEN) return;
+
+    // If origin/dest are provided, skip checkpoint route line (planned route takes priority)
+    const hasPlannedRoute = originLng != null && originLat != null;
+    if (hasPlannedRoute) return;
 
     // Clean up previous checkpoint markers
     markersRef.current.forEach((m) => m.remove());
@@ -210,33 +318,102 @@ export function TrackingMap({
     const bounds = new mapboxgl.LngLatBounds();
     sorted.forEach((cp) => bounds.extend([cp.lng, cp.lat]));
     map.current.fitBounds(bounds, { padding: 60, maxZoom: 12 });
-  }, [checkpoints, loaded]);
+  }, [checkpoints, loaded, originLng, originLat]);
 
-  // Add origin/destination markers for customer portal
+  // Add origin/destination/waypoint markers and planned route line
   useEffect(() => {
     if (!map.current || !loaded) return;
     if (!MAPBOX_TOKEN) return;
 
-    if (originLng && originLat) {
-      const el = document.createElement("div");
-      el.className = "w-4 h-4 rounded-full border-2 border-white";
-      el.style.backgroundColor = "#10b981";
-      new mapboxgl.Marker({ element: el })
-        .setLngLat([originLng, originLat])
-        .setPopup(new mapboxgl.Popup().setHTML('<div class="text-xs font-bold">Origen</div>'))
-        .addTo(map.current!);
+    // Clean up previous planned-route source/layer
+    if (map.current.getLayer("planned-route-line")) {
+      map.current.removeLayer("planned-route-line");
+    }
+    if (map.current.getSource("planned-route")) {
+      map.current.removeSource("planned-route");
     }
 
-    if (destLng && destLat) {
-      const el = document.createElement("div");
-      el.className = "w-4 h-4 rounded-full border-2 border-white";
-      el.style.backgroundColor = "#ef4444";
-      new mapboxgl.Marker({ element: el })
-        .setLngLat([destLng, destLat])
-        .setPopup(new mapboxgl.Popup().setHTML('<div class="text-xs font-bold">Destino</div>'))
+    // Collect all valid coordinates for the route line and bounds
+    const routeCoords: [number, number][] = [];
+    const bounds = new mapboxgl.LngLatBounds();
+
+    // Render origin marker (green flag)
+    if (originLng != null && originLat != null) {
+      routeCoords.push([originLng, originLat]);
+      bounds.extend([originLng, originLat]);
+
+      const popupHtml = `<div class="text-xs"><strong class="text-emerald-600">Origen</strong><br/>${originAddress || ""}</div>`;
+      const marker = new mapboxgl.Marker({ element: createOriginFlagElement(originAddress), anchor: "bottom" })
+        .setLngLat([originLng, originLat])
+        .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(popupHtml))
         .addTo(map.current!);
+      markersRef.current.push(marker);
     }
-  }, [originLng, originLat, destLng, destLat, loaded]);
+
+    // Render waypoint markers (small blue numbered dots)
+    if (waypoints && waypoints.length > 0) {
+      const sorted = [...waypoints].sort((a, b) => a.sequence - b.sequence);
+      sorted.forEach((wp) => {
+        if (wp.lat == null || wp.lng == null) return;
+        routeCoords.push([wp.lng, wp.lat]);
+        bounds.extend([wp.lng, wp.lat]);
+
+        const typeLabel = wp.type === "pickup" ? "Pickup" : "Delivery";
+        const popupHtml = `<div class="text-xs">
+          <strong class="text-blue-500">${typeLabel}</strong><br/>
+          <span class="text-zinc-500">Parada #${wp.sequence}</span><br/>
+          ${wp.address || ""}
+        </div>`;
+        const marker = new mapboxgl.Marker({ element: createWaypointDotElement(wp.sequence), anchor: "center" })
+          .setLngLat([wp.lng, wp.lat])
+          .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(popupHtml))
+          .addTo(map.current!);
+        markersRef.current.push(marker);
+      });
+    }
+
+    // Render destination marker (red pin)
+    if (destLng != null && destLat != null) {
+      routeCoords.push([destLng, destLat]);
+      bounds.extend([destLng, destLat]);
+
+      const popupHtml = `<div class="text-xs"><strong class="text-red-500">Destino</strong><br/>${destAddress || ""}</div>`;
+      const marker = new mapboxgl.Marker({ element: createDestPinElement(destAddress), anchor: "bottom" })
+        .setLngLat([destLng, destLat])
+        .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(popupHtml))
+        .addTo(map.current!);
+      markersRef.current.push(marker);
+    }
+
+    // Draw planned route line: origin → waypoints → dest
+    if (routeCoords.length >= 2) {
+      map.current.addSource("planned-route", {
+        type: "geojson",
+        data: {
+          type: "Feature",
+          properties: {},
+          geometry: { type: "LineString", coordinates: routeCoords },
+        },
+      });
+
+      map.current.addLayer({
+        id: "planned-route-line",
+        type: "line",
+        source: "planned-route",
+        paint: {
+          "line-color": "#6366f1",
+          "line-width": 3,
+          "line-opacity": 0.7,
+          "line-dasharray": [1, 0],
+        },
+      });
+    }
+
+    // Fit bounds to include all stops if we have coordinates
+    if (routeCoords.length > 0) {
+      map.current.fitBounds(bounds, { padding: 60, maxZoom: 12 });
+    }
+  }, [originLng, originLat, destLng, destLat, waypoints, loaded]);
 
   if (!MAPBOX_TOKEN) {
     return (
