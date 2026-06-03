@@ -17,6 +17,7 @@ const createLoadSchema = z.object({
     (val) => val === "" || val === null ? null : Number(val),
     z.number().int().positive().nullable().optional()
   ),
+  broker_id: z.coerce.number().optional().nullable(),
   rate: z.coerce.number().optional().nullable(),
   dispatch_fee_pct: z.coerce.number().min(0).max(100).optional().nullable(),
   weight_lbs: z.coerce.number().optional().nullable(),
@@ -64,6 +65,7 @@ export async function createLoad(formData: z.infer<typeof createLoadSchema>) {
     route_id: data.route_id,
     cargo_type_id: data.cargo_type_id || null,
     special_requirements_id: data.special_requirements_id || null,
+    broker_id: data.broker_id || null,
     rate: data.rate,
     dispatch_fee_pct: data.dispatch_fee_pct,
     weight_lbs: data.weight_lbs || null,
@@ -120,6 +122,7 @@ const updateLoadSchema = z.object({
     (val) => val === "" || val === null ? null : Number(val),
     z.number().int().positive().nullable().optional()
   ),
+  broker_id: z.coerce.number().optional().nullable(),
   rate: z.coerce.number().optional().nullable(),
   dispatch_fee_pct: z.coerce.number().min(0).max(100).optional().nullable(),
   weight_lbs: z.coerce.number().optional().nullable(),
@@ -167,6 +170,7 @@ export async function updateLoad(loadId: number, formData: z.infer<typeof update
   if (data.route_id !== undefined) updateData.route_id = data.route_id;
   if (data.cargo_type_id !== undefined) updateData.cargo_type_id = data.cargo_type_id || null;
   if (data.special_requirements_id !== undefined) updateData.special_requirements_id = data.special_requirements_id || null;
+  if (data.broker_id !== undefined) updateData.broker_id = data.broker_id || null;
   if (data.rate !== undefined) updateData.rate = data.rate;
   if (data.dispatch_fee_pct !== undefined) updateData.dispatch_fee_pct = data.dispatch_fee_pct;
   if (data.weight_lbs !== undefined) updateData.weight_lbs = data.weight_lbs || null;

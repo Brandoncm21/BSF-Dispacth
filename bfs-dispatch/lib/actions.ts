@@ -24,6 +24,7 @@ export {
   getActiveDrivers,
   getActiveTrucks,
   getActiveBrokers,
+  searchActiveBrokers,
   getRoles,
   getActiveCargoTypes,
   getActiveSpecialRequirements,
