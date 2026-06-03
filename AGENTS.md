@@ -53,7 +53,7 @@ npm run test:watch  # vitest watch mode
 | `getSupabaseServerClient()` | `lib/actions/core.ts` | Server actions (includes auth check — throws if no user) |
 | Inline `createServerClient()` | `middleware.ts` | Edge Runtime (must use `request.cookies` API) |
 
-**Legacy** `lib/supabase.ts` exists for backward compatibility — do NOT import from it in new code.
+**Singleton:** `createSupabaseBrowserClient()` cachea la instancia del cliente a nivel de módulo (lazy-init). Solo `lib/supabase-browser.ts` importa `createBrowserClient` de `@supabase/ssr`.
 
 ## Server Actions
 
