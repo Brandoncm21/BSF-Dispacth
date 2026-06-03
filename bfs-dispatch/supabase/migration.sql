@@ -107,6 +107,8 @@ ALTER TABLE sales_details ENABLE ROW LEVEL SECURITY;
 ALTER TABLE billing ENABLE ROW LEVEL SECURITY;
 ALTER TABLE load_documents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE load_status_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE locations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE driver_checkpoints ENABLE ROW LEVEL SECURITY;
 
 -- Drop existing policies to avoid conflicts
 DROP POLICY IF EXISTS "Allow authenticated access" ON record_status;
@@ -130,6 +132,8 @@ DROP POLICY IF EXISTS "Allow authenticated access" ON sales_details;
 DROP POLICY IF EXISTS "Allow authenticated access" ON billing;
 DROP POLICY IF EXISTS "Allow authenticated access" ON load_documents;
 DROP POLICY IF EXISTS "Allow authenticated access" ON load_status_history;
+DROP POLICY IF EXISTS "Allow authenticated access" ON locations;
+DROP POLICY IF EXISTS "Allow authenticated access" ON driver_checkpoints;
 
 -- Catalog tables: all authenticated users can read
 CREATE POLICY "Read catalog tables" ON record_status FOR SELECT USING (auth.role() = 'authenticated');
@@ -209,6 +213,15 @@ CREATE POLICY "Write load documents" ON load_documents FOR ALL USING (
 -- Load status history: all authenticated can read
 CREATE POLICY "Read status history" ON load_status_history FOR SELECT USING (auth.role() = 'authenticated');
 CREATE POLICY "Write status history" ON load_status_history FOR ALL USING (auth.role() = 'authenticated');
+
+-- Tracking locations: all authenticated can read
+CREATE POLICY "Read tracking locations" ON locations FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "Write tracking locations" ON locations FOR ALL USING (auth.role() = 'authenticated');
+
+-- Driver checkpoints: all authenticated can CRUD (drivers, dispatchers)
+CREATE POLICY "Read driver checkpoints" ON driver_checkpoints FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "Insert driver checkpoints" ON driver_checkpoints FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Update driver checkpoints" ON driver_checkpoints FOR UPDATE USING (auth.role() = 'authenticated');
 
 -- ============================================================
 -- 9. HELPER FUNCTION: Get current user's role
@@ -293,3 +306,5 @@ SELECT setval(pg_get_serial_sequence('sales_details', 'sales_details_id'), coale
 SELECT setval(pg_get_serial_sequence('billing', 'invoice_id'), coalesce(max(invoice_id), 1)) FROM billing;
 SELECT setval(pg_get_serial_sequence('employees', 'employee_id'), coalesce(max(employee_id), 1)) FROM employees;
 SELECT setval(pg_get_serial_sequence('roles', 'role_id'), coalesce(max(role_id), 1)) FROM roles;
+SELECT setval(pg_get_serial_sequence('locations', 'location_id'), coalesce(max(location_id), 1)) FROM locations;
+SELECT setval(pg_get_serial_sequence('driver_checkpoints', 'checkpoint_id'), coalesce(max(checkpoint_id), 1)) FROM driver_checkpoints;
