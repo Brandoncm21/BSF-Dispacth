@@ -305,6 +305,31 @@ export async function getActiveBrokers() {
   return data;
 }
 
+export type BrokerSearchResult = {
+  broker_id: number;
+  first_name: string;
+  last_name: string;
+  mc_number: string | null;
+  status_id: number;
+  status_name: string;
+};
+
+export async function searchActiveBrokers(search: string): Promise<BrokerSearchResult[]> {
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("search_brokers", {
+    p_search: search || null,
+    p_status_id: 1,
+    p_limit: 20,
+    p_offset: 0,
+  });
+
+  if (error) {
+    console.error("[searchActiveBrokers]", error.message, error.hint);
+    throw error;
+  }
+  return (data || []) as BrokerSearchResult[];
+}
+
 export async function getRoles() {
   const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase

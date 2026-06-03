@@ -17,6 +17,7 @@ export type Load = {
   route_id: number | null;
   cargo_type_id: number | null;
   special_requirements_id: number | null;
+  broker_id: number | null;
   picked_up_at: string | null;
   delivered_at: string | null;
   carrier_name: string | null;
@@ -24,6 +25,7 @@ export type Load = {
   unit_number: string | null;
   miles: number | null;
   cargo_type_name: string | null;
+  broker_name: string | null;
   total_count?: number;
 };
 
@@ -36,6 +38,7 @@ export type LoadForm = {
   route_id: string;
   cargo_type_id: string;
   special_requirements_id: string;
+  broker_id: string;
   rate: string;
   dispatch_fee_pct: string;
   factoring: boolean;
@@ -58,6 +61,7 @@ export const emptyForm: LoadForm = {
   route_id: "",
   cargo_type_id: "",
   special_requirements_id: "",
+  broker_id: "",
   rate: "",
   dispatch_fee_pct: "",
   factoring: false,
@@ -80,6 +84,7 @@ export const loadSchema = z.object({
   route_id: z.coerce.number().int().positive("Ruta es requerida"),
   cargo_type_id: z.preprocess((val) => val === "" || val === null ? null : Number(val), z.number().int().positive().nullable().optional()),
   special_requirements_id: z.preprocess((val) => val === "" || val === null ? null : Number(val), z.number().int().positive().nullable().optional()),
+  broker_id: z.coerce.number().optional().nullable(),
   rate: z.coerce.number().optional().nullable(),
   dispatch_fee_pct: z.coerce.number().optional().nullable(),
   factoring: z.boolean().default(false),

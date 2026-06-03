@@ -57,6 +57,7 @@ export function LoadFormDialog({
         route_id: editingLoad.route_id?.toString() || "",
         cargo_type_id: editingLoad.cargo_type_id?.toString() || "",
         special_requirements_id: editingLoad.special_requirements_id?.toString() || "",
+        broker_id: editingLoad.broker_id?.toString() || "",
         rate: editingLoad.rate?.toString() || "",
         dispatch_fee_pct: editingLoad.dispatch_fee_pct?.toString() || "",
         factoring: editingLoad.factoring || false,

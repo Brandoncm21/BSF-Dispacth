@@ -7,8 +7,9 @@ import { Upload } from "lucide-react";
 import { RouteSelector } from "@/components/route-selector";
 import { CreatableSelect } from "@/components/creatable-select";
 import { TruckSelector } from "@/components/truck-selector";
+import { SearchableSelect } from "@/components/searchable-select";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
-import { getDriversByCarrier, getRoutesWithDetails } from "@/lib/actions";
+import { getDriversByCarrier, getRoutesWithDetails, searchActiveBrokers } from "@/lib/actions";
 import { LOAD_STATUS, LOAD_STATUS_LABELS, PAID_STATUS } from "@/lib/constants";
 import { loadSchema, LoadForm as LoadFormType, SelectOption, LoadFormSubmitData, MAX_FILE_SIZE } from "@/types/load";
 
@@ -52,6 +53,7 @@ export const LoadForm = forwardRef<LoadFormHandle, LoadFormProps>(function LoadF
     route_id: "",
     cargo_type_id: "",
     special_requirements_id: "",
+    broker_id: "",
     rate: "",
     dispatch_fee_pct: "",
     factoring: false,
@@ -218,6 +220,24 @@ export const LoadForm = forwardRef<LoadFormHandle, LoadFormProps>(function LoadF
           {filteredDrivers.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}
         </select>
         {formErrors.driver_id && <p className="text-xs text-red-500">{formErrors.driver_id}</p>}
+      </div>
+
+      <div className="space-y-2">
+        <SearchableSelect
+          value={form.broker_id ? parseInt(form.broker_id) : null}
+          onChange={(id) => setForm({ ...form, broker_id: id?.toString() || "" })}
+          onSearch={async (query) => {
+            const results = await searchActiveBrokers(query);
+            return results.map((b) => ({
+              id: b.broker_id,
+              label: `${b.first_name} ${b.last_name}`,
+              meta: b.mc_number || "",
+            }));
+          }}
+          label="Broker"
+          placeholder="Buscar broker por nombre o MC#..."
+          error={formErrors.broker_id}
+        />
       </div>
 
       <div className="space-y-2">
