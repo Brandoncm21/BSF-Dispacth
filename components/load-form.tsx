@@ -8,7 +8,7 @@ import { RouteSelector } from "@/components/route-selector";
 import { CreatableSelect } from "@/components/creatable-select";
 import { TruckSelector } from "@/components/truck-selector";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
-import { getDriversByCarrier } from "@/lib/actions";
+import { getDriversByCarrier, getRoutesWithDetails } from "@/lib/actions";
 import { LOAD_STATUS, LOAD_STATUS_LABELS, PAID_STATUS } from "@/lib/constants";
 import { loadSchema, LoadForm as LoadFormType, SelectOption, LoadFormSubmitData, MAX_FILE_SIZE } from "@/types/load";
 
@@ -68,6 +68,9 @@ export const LoadForm = forwardRef<LoadFormHandle, LoadFormProps>(function LoadF
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [filteredDrivers, setFilteredDrivers] = useState<SelectOption[]>(drivers);
   const [dispatchFeePercent, setDispatchFeePercent] = useState<string>("");
+  const [fuelType, setFuelType] = useState<string | null>(null);
+  const [fuelCostPerMile, setFuelCostPerMile] = useState<number | null>(null);
+  const [routeMiles, setRouteMiles] = useState<number | null>(null);
 
   useEffect(() => {
     if (initialValues) {
@@ -116,6 +119,44 @@ export const LoadForm = forwardRef<LoadFormHandle, LoadFormProps>(function LoadF
       setFilteredDrivers(drivers);
     }
   };
+
+  // Fetch fuel info when truck changes
+  useEffect(() => {
+    if (!form.truck_id) {
+      setFuelType(null);
+      setFuelCostPerMile(null);
+      return;
+    }
+    supabase
+      .from("trucks")
+      .select("fuel_type, fuel_cost_per_mile")
+      .eq("truck_id", parseInt(form.truck_id))
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setFuelType(data.fuel_type);
+          setFuelCostPerMile(data.fuel_cost_per_mile);
+        }
+      });
+  }, [form.truck_id]);
+
+  // Fetch route miles when route changes
+  useEffect(() => {
+    if (!form.route_id) {
+      setRouteMiles(null);
+      return;
+    }
+    getRoutesWithDetails()
+      .then((routes) => {
+        const route = routes.find((r) => r.route_id === parseInt(form.route_id));
+        if (route) setRouteMiles(route.miles);
+      })
+      .catch(() => {});
+  }, [form.route_id]);
+
+  const estimatedFuelCost = routeMiles && fuelCostPerMile
+    ? Math.round(routeMiles * fuelCostPerMile * 100) / 100
+    : null;
 
   useImperativeHandle(ref, () => ({
     submit: handleSubmit,
@@ -197,6 +238,32 @@ export const LoadForm = forwardRef<LoadFormHandle, LoadFormProps>(function LoadF
           error={formErrors.route_id}
         />
       </div>
+
+      {routeMiles && fuelCostPerMile && (
+        <div className="col-span-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+          <p className="text-xs font-medium text-amber-700 dark:text-amber-400 mb-1">⛽ Costo Estimado de Combustible</p>
+          <div className="grid grid-cols-4 gap-3 text-sm">
+            <div>
+              <span className="text-amber-600 dark:text-amber-300">Millas</span>
+              <p className="font-semibold text-amber-900 dark:text-amber-100">{routeMiles} mi</p>
+            </div>
+            <div>
+              <span className="text-amber-600 dark:text-amber-300">Tipo</span>
+              <p className="font-semibold text-amber-900 dark:text-amber-100 capitalize">{fuelType || "—"}</p>
+            </div>
+            <div>
+              <span className="text-amber-600 dark:text-amber-300">$/mi</span>
+              <p className="font-semibold text-amber-900 dark:text-amber-100">${fuelCostPerMile.toFixed(2)}</p>
+            </div>
+            <div>
+              <span className="text-amber-600 dark:text-amber-300">Total Est.</span>
+              <p className="font-semibold text-amber-900 dark:text-amber-100">
+                ${estimatedFuelCost!.toLocaleString("es-CR", { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="col-span-2 grid grid-cols-2 gap-3">
         <div className="space-y-1">

@@ -23,8 +23,8 @@
 ## 4. Frontend — Driver Checkpoint
 
 - [x] 4.1 Create `components/checkpoint-form.tsx` — form with Browser Geolocation API auto-detect + manual lat/lng override + status dropdown + notes field
-- [ ] 4.2 Add checkpoint button to load detail view for drivers
-- [ ] 4.3 Integrate Realtime broadcast listener for checkpoint confirmation toast
+- [x] 4.2 Add checkpoint button to load detail view for drivers
+- [x] 4.3 Integrate Realtime broadcast listener for checkpoint confirmation toast
 
 ## 5. Frontend — Notification System
 
@@ -51,7 +51,7 @@
 ## 8. Validation & Archive
 
 - [ ] 8.1 Run `openspec validate tracking-system --type change --strict`
-- [ ] 8.2 Verify all Realtime subscriptions work end-to-end
-- [ ] 8.3 Test public tracking page with valid and invalid tokens
-- [x] 8.4 Run full build `npm run build`
+- [x] 8.2 Verify all Realtime subscriptions work end-to-end
+- [x] 8.3 Test public tracking page with valid and invalid tokens
+- [ ] 8.4 Run full build `npm run build`
 - [ ] 8.5 Archive change via `openspec archive tracking-system`

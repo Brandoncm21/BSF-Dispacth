@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, MapPin, ArrowRight } from "lucide-react";
-import { getStates, getCities, searchStreets, createRoute, getOrCreateCity } from "@/lib/actions";
+import { getStates, getCities, searchStreets, createRoute, getOrCreateCity, calculateRouteMiles } from "@/lib/actions";
 import { cn } from "@/lib/utils";
 
 type StateOption = { state_id: number; state_name: string };
@@ -108,6 +108,7 @@ export function NewRouteModal({ open, onOpenChange, onRouteCreated }: NewRouteMo
 
   const [miles, setMiles] = useState("");
   const [loading, setLoading] = useState(false);
+  const [calculatingMiles, setCalculatingMiles] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<"origin" | "destination" | "confirm">("origin");
 
@@ -187,6 +188,48 @@ export function NewRouteModal({ open, onOpenChange, onRouteCreated }: NewRouteMo
       : destination.cityId !== null;
     const hasStreet = destination.streetId !== null || destination.customStreetName.trim() !== "";
     return destination.stateId !== null && hasCity && hasStreet;
+  }
+
+  function getOriginCityName(): string {
+    if (origin.cityInputMode === "custom") return origin.customCityName;
+    const city = originCities.find(c => c.city_id === origin.cityId);
+    return city?.city_name || "";
+  }
+
+  function getDestCityName(): string {
+    if (destination.cityInputMode === "custom") return destination.customCityName;
+    const city = destCities.find(c => c.city_id === destination.cityId);
+    return city?.city_name || "";
+  }
+
+  function getStateName(stateId: number): string {
+    return states.find(s => s.state_id === stateId)?.state_name || "";
+  }
+
+  async function handleCalculateMiles() {
+    const originCity = getOriginCityName();
+    const destCity = getDestCityName();
+    if (!originCity || !destCity || !origin.stateId || !destination.stateId) return;
+
+    setCalculatingMiles(true);
+    setError(null);
+    try {
+      const result = await calculateRouteMiles(
+        originCity,
+        getStateName(origin.stateId),
+        destCity,
+        getStateName(destination.stateId)
+      );
+      if (result.error) {
+        setError(result.error);
+      } else if (result.miles) {
+        setMiles(String(result.miles));
+      }
+    } catch {
+      setError("Error al calcular distancia");
+    } finally {
+      setCalculatingMiles(false);
+    }
   }
 
   function canCreateRoute(): boolean {
@@ -508,15 +551,31 @@ export function NewRouteModal({ open, onOpenChange, onRouteCreated }: NewRouteMo
                 <div className="border-t border-zinc-200 dark:border-zinc-700 pt-4">
                   <div className="space-y-2">
                     <Label htmlFor="miles">Distancia (millas) *</Label>
-                    <Input
-                      id="miles"
-                      type="number"
-                      min="1"
-                      value={miles}
-                      onChange={(e) => setMiles(e.target.value)}
-                      placeholder="Ej: 250"
-                      className="max-w-[200px]"
-                    />
+                    <div className="flex gap-2 items-start">
+                      <Input
+                        id="miles"
+                        type="number"
+                        min="1"
+                        value={miles}
+                        onChange={(e) => setMiles(e.target.value)}
+                        placeholder="Ej: 250"
+                        className="max-w-[200px]"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleCalculateMiles}
+                        disabled={calculatingMiles || !origin.stateId || !destination.stateId}
+                        className="whitespace-nowrap"
+                      >
+                        {calculatingMiles ? (
+                          <><Loader2 className="mr-1 h-3 w-3 animate-spin" /> Calculando...</>
+                        ) : (
+                          <><MapPin className="mr-1 h-3 w-3" /> Calcular con Mapbox</>
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>

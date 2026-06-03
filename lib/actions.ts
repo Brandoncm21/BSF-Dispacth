@@ -42,6 +42,7 @@ export {
   searchStreets,
   getOrCreateStreet,
   createRoute,
+  calculateRouteMiles,
 } from "./actions/routes";
 
 export type {

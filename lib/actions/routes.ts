@@ -276,3 +276,48 @@ export async function getOrCreateStreet(streetName: string, cityId: number, stat
 
   return existing.street_id;
 }
+
+export async function calculateRouteMiles(
+  originCity: string,
+  originState: string,
+  destCity: string,
+  destState: string
+) {
+  const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+  if (!token) return { error: "Mapbox no configurado", miles: null };
+
+  async function geocode(query: string): Promise<[number, number] | null> {
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${token}&country=US,MX&limit=1`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data.features?.[0]?.center) return null;
+    return data.features[0].center as [number, number];
+  }
+
+  const originCoords = await geocode(`${originCity}, ${originState}`);
+  const destCoords = await geocode(`${destCity}, ${destState}`);
+
+  if (!originCoords || !destCoords) {
+    return { error: "No se pudieron geocodificar las direcciones", miles: null };
+  }
+
+  const [oLng, oLat] = originCoords;
+  const [dLng, dLat] = destCoords;
+
+  const directionsUrl = `https://api.mapbox.com/directions/v5/mapbox/driving/${oLng},${oLat};${dLng},${dLat}?access_token=${token}&geometries=geojson&overview=false`;
+  const dirRes = await fetch(directionsUrl);
+  if (!dirRes.ok) {
+    return { error: "Error al calcular la ruta", miles: null };
+  }
+
+  const dirData = await dirRes.json();
+  const distanceMeters = dirData.routes?.[0]?.distance;
+  if (!distanceMeters) {
+    return { error: "No se encontró una ruta", miles: null };
+  }
+
+  const miles = Math.round(distanceMeters * 0.000621371 * 10) / 10;
+
+  return { miles, error: null };
+}
