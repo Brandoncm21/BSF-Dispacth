@@ -256,7 +256,7 @@ export type Database = {
           rate: number | null;
           dispatch_fee_pct: number | null;
           factoring: boolean;
-          load_status: 'pending' | 'booked' | 'picked_up' | 'delivered' | 'paid' | null;
+          load_status: 'pending' | 'booked' | 'picked_up' | 'delivered' | 'paid' | 'cancelled' | 'delayed' | null;
           paid_status: 'unpaid' | 'partial' | 'paid' | null;
           picked_up_at: string | null;
           delivered_at: string | null;
@@ -281,7 +281,7 @@ export type Database = {
           rate?: number | null;
           dispatch_fee_pct?: number | null;
           factoring?: boolean;
-          load_status?: 'pending' | 'booked' | 'picked_up' | 'delivered' | 'paid' | null;
+          load_status?: 'pending' | 'booked' | 'picked_up' | 'delivered' | 'paid' | 'cancelled' | 'delayed' | null;
           paid_status?: 'unpaid' | 'partial' | 'paid' | null;
           picked_up_at?: string | null;
           delivered_at?: string | null;
@@ -306,7 +306,7 @@ export type Database = {
           rate?: number | null;
           dispatch_fee_pct?: number | null;
           factoring?: boolean;
-          load_status?: 'pending' | 'booked' | 'picked_up' | 'delivered' | 'paid' | null;
+          load_status?: 'pending' | 'booked' | 'picked_up' | 'delivered' | 'paid' | 'cancelled' | 'delayed' | null;
           paid_status?: 'unpaid' | 'partial' | 'paid' | null;
           picked_up_at?: string | null;
           delivered_at?: string | null;

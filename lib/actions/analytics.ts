@@ -59,6 +59,8 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   picked_up: { label: "En Tránsito", color: "#8b5cf6" },
   delivered: { label: "Entregado", color: "#10b981" },
   paid: { label: "Pagado", color: "#059669" },
+  cancelled: { label: "Cancelada", color: "#ef4444" },
+  delayed: { label: "Retrasada", color: "#f97316" },
 };
 
 function getMonthRange(tzOffsetMinutes: number = 0): { from: string; to: string } {
@@ -235,3 +237,4 @@ export async function getDashboardAnalytics(dispatcherId?: number, tzOffsetMinut
     } satisfies DashboardKPIs,
   };
 }
+

@@ -430,7 +430,9 @@ export const LoadForm = forwardRef<LoadFormHandle, LoadFormProps>(function LoadF
           <option value={LOAD_STATUS.BOOKED}>{LOAD_STATUS_LABELS[LOAD_STATUS.BOOKED]}</option>
           <option value={LOAD_STATUS.PICKED_UP}>{LOAD_STATUS_LABELS[LOAD_STATUS.PICKED_UP]}</option>
           <option value={LOAD_STATUS.DELIVERED}>{LOAD_STATUS_LABELS[LOAD_STATUS.DELIVERED]}</option>
-          <option value={LOAD_STATUS.PAID}>{LOAD_STATUS_LABELS[LOAD_STATUS.PAID]}</option>
+                    <option value={LOAD_STATUS.PAID}>{LOAD_STATUS_LABELS[LOAD_STATUS.PAID]}</option>
+          <option value={LOAD_STATUS.CANCELLED}>{LOAD_STATUS_LABELS[LOAD_STATUS.CANCELLED]}</option>
+          <option value={LOAD_STATUS.DELAYED}>{LOAD_STATUS_LABELS[LOAD_STATUS.DELAYED]}</option>
         </select>
       </div>
 
@@ -503,3 +505,4 @@ export const LoadForm = forwardRef<LoadFormHandle, LoadFormProps>(function LoadF
     </div>
   );
 });
+

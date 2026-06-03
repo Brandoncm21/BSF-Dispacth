@@ -13,6 +13,8 @@ const LOAD_STATUS_LABELS: Record<string, string> = {
   picked_up: "Recogido",
   delivered: "Entregado",
   paid: "Pagado",
+  cancelled: "Cancelada",
+  delayed: "Retrasada",
 };
 
 const LOAD_STATUS_PROGRESS: Record<string, number> = {
@@ -21,6 +23,8 @@ const LOAD_STATUS_PROGRESS: Record<string, number> = {
   picked_up: 50,
   delivered: 85,
   paid: 100,
+  cancelled: 0,
+  delayed: 50,
 };
 
 const LOAD_STATUS_COLORS: Record<string, string> = {
@@ -29,6 +33,8 @@ const LOAD_STATUS_COLORS: Record<string, string> = {
   picked_up: "bg-purple-500",
   delivered: "bg-green-500",
   paid: "bg-emerald-500",
+  cancelled: "bg-red-500",
+  delayed: "bg-orange-500",
 };
 
 export default async function TrackPage({ params }: Props) {
@@ -189,3 +195,4 @@ export default async function TrackPage({ params }: Props) {
     </div>
   );
 }
+

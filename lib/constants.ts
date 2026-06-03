@@ -4,6 +4,8 @@ export const LOAD_STATUS = {
   PICKED_UP: 'picked_up',
   DELIVERED: 'delivered',
   PAID: 'paid',
+  CANCELLED: 'cancelled',
+  DELAYED: 'delayed',
 } as const
 
 export type LoadStatus = typeof LOAD_STATUS[keyof typeof LOAD_STATUS]
@@ -14,6 +16,8 @@ export const LOAD_STATUS_LABELS: Record<LoadStatus, string> = {
   picked_up: 'Recogido',
   delivered: 'Entregado',
   paid: 'Pagado',
+  cancelled: 'Cancelada',
+  delayed: 'Retrasada',
 }
 
 export const LOAD_STATUS_COLORS: Record<LoadStatus, string> = {
@@ -22,6 +26,8 @@ export const LOAD_STATUS_COLORS: Record<LoadStatus, string> = {
   picked_up: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
   delivered: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
   paid: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+  cancelled: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+  delayed: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
 }
 
 export const PAID_STATUS = {
@@ -32,10 +38,11 @@ export const PAID_STATUS = {
 
 export type PaidStatus = typeof PAID_STATUS[keyof typeof PAID_STATUS]
 
-// Orden de transición de estados (para el dropdown en tabla)
-export const LOAD_STATUS_TRANSITIONS: Partial<Record<LoadStatus, LoadStatus>> = {
-  pending: 'booked',
-  booked: 'picked_up',
-  picked_up: 'delivered',
-  delivered: 'paid',
+// Transiciones de estados validas (para el dropdown en tabla)
+export const LOAD_STATUS_TRANSITIONS: Partial<Record<LoadStatus, LoadStatus[]>> = {
+  pending: ['booked'],
+  booked: ['picked_up'],
+  picked_up: ['delivered', 'delayed'],
+  delayed: ['picked_up', 'cancelled'],
+  delivered: ['paid'],
 }

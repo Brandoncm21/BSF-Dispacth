@@ -88,7 +88,7 @@ export const loadSchema = z.object({
   rate: z.coerce.number().optional().nullable(),
   dispatch_fee_pct: z.coerce.number().optional().nullable(),
   factoring: z.boolean().default(false),
-  load_status: z.string().default(LOAD_STATUS.PENDING),
+  load_status: z.enum(['pending','booked','picked_up','delivered','paid','cancelled','delayed']).default(LOAD_STATUS.PENDING),
   paid_status: z.string().default(PAID_STATUS.UNPAID),
   status_id: z.coerce.number().default(1),
   picked_up_at: z.string().min(1, "Fecha de recogida es requerida"),
@@ -108,3 +108,4 @@ export type LoadFormSubmitData = {
   rcFile: File | null;
   bolFile: File | null;
 };
+

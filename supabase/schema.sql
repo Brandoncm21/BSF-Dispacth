@@ -153,7 +153,7 @@ CREATE TABLE loads (
     dispatch_fee_pct NUMERIC(5,2),
     factoring BOOLEAN DEFAULT FALSE,
     load_status VARCHAR(20) DEFAULT 'pending'
-        CHECK (load_status IN ('pending','booked','picked_up','delivered','paid')),
+        CHECK (load_status IN ('pending','booked','picked_up','delivered','paid','cancelled','delayed')),
     paid_status VARCHAR(20) DEFAULT 'unpaid'
         CHECK (paid_status IN ('unpaid','partial','paid')),
     picked_up_at TIMESTAMPTZ,
@@ -624,7 +624,7 @@ CREATE TABLE IF NOT EXISTS earnings (
     profit_type VARCHAR(20) DEFAULT 'dispatch_fee'
         CHECK (profit_type IN ('dispatch_fee', 'delivery_complete', 'payment_received')),
     earnings_status VARCHAR(20) DEFAULT 'provisional'
-        CHECK (earnings_status IN ('provisional', 'confirmed', 'finalized')),
+        CHECK (earnings_status IN ('provisional', 'confirmed', 'finalized', 'reversed')),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     created_by INTEGER REFERENCES employees(employee_id),
@@ -736,3 +736,4 @@ LEFT JOIN addresses orig_addr ON l.origin_address_id = orig_addr.address_id
 LEFT JOIN addresses dest_addr ON l.destination_address_id = dest_addr.address_id
 LEFT JOIN states orig_state ON orig_addr.state_id = orig_state.state_id
 LEFT JOIN states dest_state ON dest_addr.state_id = dest_state.state_id;
+

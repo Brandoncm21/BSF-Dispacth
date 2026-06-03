@@ -23,7 +23,7 @@ const createLoadSchema = z.object({
   weight_lbs: z.coerce.number().optional().nullable(),
   load_data: z.string().optional().nullable(),
   factoring: z.boolean().default(false),
-  load_status: z.string().default(LOAD_STATUS.PENDING),
+  load_status: z.enum(['pending','booked','picked_up','delivered','paid','cancelled','delayed']).default(LOAD_STATUS.PENDING),
   paid_status: z.string().default(PAID_STATUS.UNPAID),
   picked_up_at: z.string().min(1, "Fecha de recogida es requerida"),
   delivered_at: z.string().min(1, "Fecha de entrega es requerida"),
@@ -128,7 +128,7 @@ const updateLoadSchema = z.object({
   weight_lbs: z.coerce.number().optional().nullable(),
   load_data: z.string().optional().nullable(),
   factoring: z.boolean().optional(),
-  load_status: z.string().optional(),
+  load_status: z.enum(['pending','booked','picked_up','delivered','paid','cancelled','delayed']).optional(),
   paid_status: z.string().optional(),
   picked_up_at: z.string().min(1, "Fecha de recogida es requerida").optional(),
   delivered_at: z.string().min(1, "Fecha de entrega es requerida").optional(),
@@ -294,3 +294,5 @@ export async function searchLoads(
   const total = rows.length > 0 ? Number(rows[0].total_count) : 0;
   return { data: rows, count: total };
 }
+
+

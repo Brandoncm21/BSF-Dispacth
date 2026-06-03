@@ -98,7 +98,7 @@ export function LoadsTable({ loads, onEdit, onDelete, onViewDetails, onStatusCha
                   <Button variant="ghost" size="icon" onClick={() => onViewDetails(load)} title="Detalles de carga">
                     <Eye className="h-4 w-4 text-zinc-600" />
                   </Button>
-                  {onCheckpoint && load.driver_id && (load.load_status === LOAD_STATUS.BOOKED || load.load_status === LOAD_STATUS.PICKED_UP) && (
+                  {onCheckpoint && load.driver_id && (load.load_status === LOAD_STATUS.BOOKED || load.load_status === LOAD_STATUS.PICKED_UP || load.load_status === LOAD_STATUS.DELAYED) && (
                     <Button variant="ghost" size="icon" onClick={() => onCheckpoint(load)} title="Reportar posición">
                       <MapPin className="h-4 w-4 text-emerald-500" />
                     </Button>
@@ -125,3 +125,4 @@ export function LoadsTable({ loads, onEdit, onDelete, onViewDetails, onStatusCha
     </div>
   );
 }
+

@@ -308,3 +308,20 @@ SELECT setval(pg_get_serial_sequence('employees', 'employee_id'), coalesce(max(e
 SELECT setval(pg_get_serial_sequence('roles', 'role_id'), coalesce(max(role_id), 1)) FROM roles;
 SELECT setval(pg_get_serial_sequence('locations', 'location_id'), coalesce(max(location_id), 1)) FROM locations;
 SELECT setval(pg_get_serial_sequence('driver_checkpoints', 'checkpoint_id'), coalesce(max(checkpoint_id), 1)) FROM driver_checkpoints;
+
+-- ============================================================
+-- MIGRACION v4: Estados Cancelada y Retrasada (2026-06-03)
+-- ============================================================
+DO $
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE constraint_name = 'loads_load_status_check'
+        AND table_name = 'loads'
+    ) THEN
+        ALTER TABLE loads DROP CONSTRAINT loads_load_status_check;
+    END IF;
+    ALTER TABLE loads ADD CONSTRAINT loads_load_status_check
+        CHECK (load_status IN ('pending','booked','picked_up','delivered','paid','cancelled','delayed'));
+END;
+$;
