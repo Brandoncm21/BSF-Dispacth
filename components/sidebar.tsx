@@ -31,9 +31,7 @@ const iconMap: Record<string, typeof LayoutDashboard> = {
   brokers: UserCircle,
   traceability: MapPin,
   reports: BarChart3,
-  sales: BarChart3,
   human_resources: UserCog,
-  executive: BarChart3,
 };
 
 const labelMap: Record<string, string> = {
@@ -45,9 +43,7 @@ const labelMap: Record<string, string> = {
   brokers: "Brokers",
   traceability: "Trazabilidad",
   reports: "Reportes",
-  sales: "Ventas",
   human_resources: "Staff",
-  executive: "Analítica Ejecutiva",
 };
 
 interface NavItem {

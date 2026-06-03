@@ -95,6 +95,8 @@ export type {
   DispatcherRanking,
   LoadStatusDistribution,
   CarrierPerformance,
+  StateProfitData,
+  TruckProfitRanking,
   DashboardKPIs,
 } from "./actions/analytics";
 
@@ -126,18 +128,6 @@ export {
   deleteBrokerContact,
   setPrimaryContact,
 } from "./actions/fleet";
-
-export {
-  getExecutiveAnalytics,
-} from "./actions/executive-analytics";
-
-export type {
-  ExecutiveAnalytics,
-  PresetType,
-  ExecutiveKPIs,
-  ComparisonRow,
-  SparklinePoint,
-} from "./actions/executive-analytics";
 
 export type {
   AvailabilityStatus,

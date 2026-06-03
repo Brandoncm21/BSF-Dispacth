@@ -29,6 +29,21 @@ export type CarrierPerformance = {
   net_profit: number;
 };
 
+export type StateProfitData = {
+  state: string;
+  load_count: number;
+  gross_revenue: number;
+  net_profit: number;
+};
+
+export type TruckProfitRanking = {
+  truck_id: number;
+  unit_number: string;
+  load_count: number;
+  gross_revenue: number;
+  net_profit: number;
+};
+
 export type DashboardKPIs = {
   totalLoads: number;
   totalRevenue: number;
@@ -154,6 +169,45 @@ export async function getDashboardAnalytics(dispatcherId?: number, tzOffsetMinut
     .sort((a, b) => b.gross_revenue - a.gross_revenue)
     .slice(0, 10);
 
+  // === State Profit Analysis (by origin state) ===
+  const stateMap = new Map<string, StateProfitData>();
+  for (const row of rows) {
+    const state = row.origin_state_name || "N/A";
+    const curr = stateMap.get(state) || {
+      state,
+      load_count: 0,
+      gross_revenue: 0,
+      net_profit: 0,
+    };
+    curr.load_count += 1;
+    curr.gross_revenue += Number(row.gross_revenue) || 0;
+    curr.net_profit += Number(row.net_profit) || 0;
+    stateMap.set(state, curr);
+  }
+  const stateProfitData: StateProfitData[] = Array.from(stateMap.values())
+    .sort((a, b) => b.gross_revenue - a.gross_revenue)
+    .slice(0, 10);
+
+  // === Truck Profit Ranking ===
+  const truckMap = new Map<number, TruckProfitRanking>();
+  for (const row of rows) {
+    if (row.truck_id == null) continue;
+    const curr = truckMap.get(row.truck_id) || {
+      truck_id: row.truck_id,
+      unit_number: row.unit_number || "N/A",
+      load_count: 0,
+      gross_revenue: 0,
+      net_profit: 0,
+    };
+    curr.load_count += 1;
+    curr.gross_revenue += Number(row.gross_revenue) || 0;
+    curr.net_profit += Number(row.net_profit) || 0;
+    truckMap.set(row.truck_id, curr);
+  }
+  const truckProfitRanking: TruckProfitRanking[] = Array.from(truckMap.values())
+    .sort((a, b) => b.net_profit - a.net_profit)
+    .slice(0, 10);
+
   // === KPIs ===
   const totalRevenue = rows.reduce((s, r) => s + (Number(r.gross_revenue) || 0), 0);
   const totalProfit = rows.reduce((s, r) => s + (Number(r.net_profit) || 0), 0);
@@ -169,6 +223,8 @@ export async function getDashboardAnalytics(dispatcherId?: number, tzOffsetMinut
     dispatcherRanking,
     loadStatusDistribution,
     carrierPerformance,
+    stateProfitData,
+    truckProfitRanking,
     kpis: {
       totalLoads: totalLoads || 0,
       totalRevenue,

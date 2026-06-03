@@ -23,8 +23,6 @@ export const ROLE_PERMISSIONS: Record<RoleType, RoleConfig> = {
       "brokers",
       "traceability",
       "reports",
-      "sales",
-      "executive",
     ],
     description: "Operaciones administrativas",
   },
@@ -40,7 +38,7 @@ export const ROLE_PERMISSIONS: Record<RoleType, RoleConfig> = {
   },
   sales: {
     label: "Ventas",
-    modules: ["dashboard", "brokers", "reports", "sales", "executive"],
+    modules: ["dashboard", "brokers", "reports"],
     description: "Gestión de ventas y brokers",
   },
 };
@@ -54,9 +52,7 @@ export const MODULE_ROUTE_MAP: Record<string, string> = {
   brokers: "/brokers",
   traceability: "/traceability",
   reports: "/reports",
-  sales: "/dashboard/sales",
   human_resources: "/dashboard/human-resources",
-  executive: "/dashboard/executive",
 };
 
 export function hasAccess(role: RoleType | null | undefined, module: string): boolean {
