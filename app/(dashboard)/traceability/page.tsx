@@ -168,14 +168,18 @@ export default function TraceabilityPage() {
         </div>
       </div>
 
-      {trackingMarkers.length > 0 && (
-        <div className="mb-8 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 overflow-hidden">
-          <div className="p-4 border-b border-zinc-200 dark:border-zinc-800">
-            <h2 className="text-lg font-semibold">Mapa de Tracking</h2>
-          </div>
-          <TrackingMapWithNoSSR truckMarkers={trackingMarkers} height="350px" />
+      <div className="mb-8 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+        <div className="p-4 border-b border-zinc-200 dark:border-zinc-800">
+          <h2 className="text-lg font-semibold">Mapa de Tracking</h2>
         </div>
-      )}
+        {trackingMarkers.length > 0 ? (
+          <TrackingMapWithNoSSR truckMarkers={trackingMarkers} height="350px" />
+        ) : (
+          <div className="flex items-center justify-center h-[350px] text-zinc-400 text-sm bg-zinc-50 dark:bg-zinc-900">
+            No hay camiones en ruta con ubicación reportada
+          </div>
+        )}
+      </div>
 
       <div className="grid grid-cols-3 gap-6">
         <div className="col-span-2 space-y-4">
