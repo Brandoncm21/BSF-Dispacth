@@ -26,6 +26,7 @@ export function NewRouteModal({ open, onOpenChange, onRouteCreated }: NewRouteMo
     miles: null,
   });
   const [loading, setLoading] = useState(false);
+  const [isFrequent, setIsFrequent] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function handleClose() {
@@ -81,6 +82,19 @@ export function NewRouteModal({ open, onOpenChange, onRouteCreated }: NewRouteMo
 
         <LocationPicker value={pair} onChange={setPair} />
 
+        <div className="flex items-center gap-2 py-3">
+          <input
+            type="checkbox"
+            id="is_frequent"
+            checked={isFrequent}
+            onChange={(e) => setIsFrequent(e.target.checked)}
+            className="h-4 w-4"
+          />
+          <label htmlFor="is_frequent" className="text-sm text-zinc-700 dark:text-zinc-300 cursor-pointer">
+            Guardar como ruta frecuente
+          </label>
+        </div>
+
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="outline" onClick={handleClose} disabled={loading}>
             Cancelar
@@ -100,3 +114,4 @@ export function NewRouteModal({ open, onOpenChange, onRouteCreated }: NewRouteMo
     </Dialog>
   );
 }
+

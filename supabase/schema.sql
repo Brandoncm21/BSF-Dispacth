@@ -737,3 +737,4 @@ LEFT JOIN addresses dest_addr ON l.destination_address_id = dest_addr.address_id
 LEFT JOIN states orig_state ON orig_addr.state_id = orig_state.state_id
 LEFT JOIN states dest_state ON dest_addr.state_id = dest_state.state_id;
 
+

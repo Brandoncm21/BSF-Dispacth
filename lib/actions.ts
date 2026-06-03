@@ -39,6 +39,7 @@ export {
   getRoutesWithDetails,
   getOrCreateRoute,
   createRoute,
+  updateRoute,
   calculateRouteMiles,
 } from "./actions/routes";
 
@@ -154,3 +155,4 @@ export {
   markRead,
   markAllRead,
 } from "./actions/notifications";
+

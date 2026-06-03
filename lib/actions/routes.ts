@@ -5,6 +5,7 @@ import { getSupabaseServerClient } from "./core";
 export type RouteWithDetails = {
   route_id: number;
   miles: number | null;
+  is_frequent: boolean;
   origin_location_id: number;
   destination_location_id: number;
   origin: {
@@ -26,14 +27,15 @@ export type RouteWithDetails = {
  * Replaces 5-level nested join (addresses→streets→cities→states)
  * with a simple join to locations
  */
-export async function getRoutesWithDetails() {
+export async function getRoutesWithDetails(onlyFrequent?: boolean) {
   const supabase = await getSupabaseServerClient();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("routes")
     .select(`
       route_id,
       miles,
+      is_frequent,
       origin_location_id,
       destination_location_id,
       origin:locations!routes_origin_location_id_fkey(
@@ -51,6 +53,12 @@ export async function getRoutesWithDetails() {
     `)
     .eq("status_id", 1);
 
+  if (onlyFrequent) {
+    query = query.eq("is_frequent", true);
+  }
+
+  const { data, error } = await query;
+
   if (error) throw error;
 
   const routes: RouteWithDetails[] = (data || []).map((r) => {
@@ -61,6 +69,7 @@ export async function getRoutesWithDetails() {
     return {
       route_id: r.route_id as number,
       miles: r.miles as number | null,
+      is_frequent: (r.is_frequent as boolean) ?? false,
       origin_location_id: r.origin_location_id as number,
       destination_location_id: r.destination_location_id as number,
       origin: {
@@ -129,12 +138,12 @@ export async function getOrCreateRoute(
 
 /**
  * Create a new route with location IDs and miles
- * Simple INSERT — no get-or-create chain needed
  */
 export async function createRoute(
   originLocationId: number,
   destinationLocationId: number,
-  miles: number
+  miles: number,
+  isFrequent?: boolean
 ) {
   const supabase = await getSupabaseServerClient();
 
@@ -144,6 +153,7 @@ export async function createRoute(
       origin_location_id: originLocationId,
       destination_location_id: destinationLocationId,
       miles,
+      is_frequent: isFrequent ?? false,
       status_id: 1,
     })
     .select("route_id")
@@ -153,6 +163,28 @@ export async function createRoute(
   if (!newRoute) throw new Error("Failed to create route");
 
   return newRoute.route_id;
+}
+
+/**
+ * Update an existing route (miles, is_frequent, etc.)
+ */
+export async function updateRoute(
+  routeId: number,
+  updates: { miles?: number; is_frequent?: boolean }
+) {
+  const supabase = await getSupabaseServerClient();
+
+  const updateData: Record<string, unknown> = {};
+  if (updates.miles !== undefined) updateData.miles = updates.miles;
+  if (updates.is_frequent !== undefined) updateData.is_frequent = updates.is_frequent;
+
+  const { error } = await supabase
+    .from("routes")
+    .update(updateData)
+    .eq("route_id", routeId);
+
+  if (error) throw error;
+  return true;
 }
 
 /**

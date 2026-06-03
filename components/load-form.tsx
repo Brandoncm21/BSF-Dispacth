@@ -72,6 +72,7 @@ export const LoadForm = forwardRef<LoadFormHandle, LoadFormProps>(function LoadF
   const [dispatchFeePercent, setDispatchFeePercent] = useState<string>("");
   const [fuelType, setFuelType] = useState<string | null>(null);
   const [fuelCostPerMile, setFuelCostPerMile] = useState<number | null>(null);
+  const [brokerLabel, setBrokerLabel] = useState<string>("");
   const [routeMiles, setRouteMiles] = useState<number | null>(null);
 
   useEffect(() => {
@@ -505,4 +506,6 @@ export const LoadForm = forwardRef<LoadFormHandle, LoadFormProps>(function LoadF
     </div>
   );
 });
+
+
 

@@ -325,3 +325,9 @@ BEGIN
         CHECK (load_status IN ('pending','booked','picked_up','delivered','paid','cancelled','delayed'));
 END;
 $;
+
+-- ============================================================
+-- MIGRATION v5: Rutas Frecuentes (2026-06-03)
+-- ============================================================
+ALTER TABLE routes
+    ADD COLUMN IF NOT EXISTS is_frequent BOOLEAN DEFAULT FALSE;

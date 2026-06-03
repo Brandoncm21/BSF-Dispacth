@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 type Option = { id: number; label: string; meta?: string };
 
 interface SearchableSelectProps {
+  initialLabel?: string;
   value: number | null;
   onChange: (id: number | null) => void;
   onSearch: (query: string) => Promise<Option[]>;
@@ -25,6 +26,7 @@ export function SearchableSelect({
   label,
   error,
   disabled,
+  initialLabel,
 }: SearchableSelectProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -35,7 +37,7 @@ export function SearchableSelect({
   const inputRef = useRef<HTMLInputElement>(null!);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  const selectedLabel = results.find((r) => r.id === value)?.label || "";
+  const selectedLabel = selectedLabel || results.find((r) => r.id === value)?.label || "";
 
   const performSearch = useCallback(async (q: string) => {
     if (!q.trim()) {
@@ -225,3 +227,6 @@ export function SearchableSelect({
     </div>
   );
 }
+
+
+

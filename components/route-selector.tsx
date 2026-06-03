@@ -28,10 +28,10 @@ export function RouteSelector({ value, onChange, label, error }: RouteSelectorPr
 
   async function fetchRoutes() {
     try {
-      const data = await getRoutesWithDetails();
+      const data = await getRoutesWithDetails(true);
       const routeOptions: RouteOption[] = data.map((r) => ({
         id: r.route_id,
-        label: `${r.origin.formatted_address} → ${r.destination.formatted_address}`,
+        label: `${r.origin.city || r.origin.formatted_address.split(",")[0] || "Sin ubicación"} → ${r.destination.city || r.destination.formatted_address.split(",")[0] || "Sin ubicación"}`,
         miles: r.miles,
       }));
       setRoutes(routeOptions);
@@ -138,3 +138,4 @@ export function RouteSelector({ value, onChange, label, error }: RouteSelectorPr
     </div>
   );
 }
+
