@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase";
+import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { hasAccess, type RoleType } from "@/config/roles";
+
+const supabase = createSupabaseBrowserClient();
 
 async function fetchUserRoleFromDB(userId: string): Promise<RoleType | null> {
   const { data, error } = await supabase.rpc("get_user_role_type");
