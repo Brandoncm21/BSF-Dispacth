@@ -14,7 +14,17 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "BestFreight Dispatch",
-  description: "Freight dispatch management system",
+  description: "Sistema de gestión de despacho de cargas BFS Solutions",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    title: "BestFreight",
+    statusBarStyle: "default",
+  },
+  other: {
+    "theme-color": "#18181b",
+    "mobile-web-app-capable": "yes",
+  },
 };
 
 export default function RootLayout({

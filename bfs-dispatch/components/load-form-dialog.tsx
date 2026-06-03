@@ -56,15 +56,16 @@ export function LoadFormDialog({
         driver_id: editingLoad.driver_id?.toString() || "",
         route_id: editingLoad.route_id?.toString() || "",
         cargo_type_id: editingLoad.cargo_type_id?.toString() || "",
-        special_requirements_id: "",
+        special_requirements_id: editingLoad.special_requirements_id?.toString() || "",
         rate: editingLoad.rate?.toString() || "",
-        dispatch_fee_pct: "",
+        dispatch_fee_pct: editingLoad.dispatch_fee_pct?.toString() || "",
         factoring: editingLoad.factoring || false,
         load_status: editingLoad.load_status || LOAD_STATUS.PENDING,
         paid_status: editingLoad.paid_status || PAID_STATUS.UNPAID,
         status_id: 1,
         picked_up_at: toDatetimeLocal(editingLoad.picked_up_at),
         delivered_at: toDatetimeLocal(editingLoad.delivered_at),
+        confirmed_digital: false,
       }
     : undefined;
 

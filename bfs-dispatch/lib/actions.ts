@@ -36,18 +36,25 @@ export {
 
 export {
   getRoutesWithDetails,
-  getOrCreateAddress,
   getOrCreateRoute,
-  getOrCreateCity,
-  searchStreets,
-  getOrCreateStreet,
   createRoute,
+  calculateRouteMiles,
 } from "./actions/routes";
 
 export type {
   RouteWithDetails,
-  AddressWithDetails,
 } from "./actions/routes";
+
+export {
+  searchLocations,
+  getLocationById,
+  getOrCreateLocation,
+} from "./actions/locations";
+
+export type {
+  Location,
+  MapboxPlaceData,
+} from "./actions/locations";
 
 export {
   uploadLoadDocument,
@@ -71,9 +78,33 @@ export type {
 } from "./actions/sales";
 
 export {
+  getReportsData,
+} from "./actions/reports";
+
+export type {
+  ReportRow,
+  GroupedReport,
+} from "./actions/reports";
+
+export {
+  getDashboardAnalytics,
+} from "./actions/analytics";
+
+export type {
+  RevenueTrend,
+  DispatcherRanking,
+  LoadStatusDistribution,
+  CarrierPerformance,
+  StateProfitData,
+  TruckProfitRanking,
+  DashboardKPIs,
+} from "./actions/analytics";
+
+export {
   getTruckById,
   getTrucksWithAvailability,
   getTruckLoadHistory,
+  getTruckStatusHistory,
   getFleetOverview,
   getFleetAlerts,
   getTrucksWithSmartStatus,
@@ -102,8 +133,23 @@ export type {
   AvailabilityStatus,
   TruckWithAvailability,
   TruckLoadHistory,
+  StatusHistoryEvent,
   FleetAlert,
   TruckStatus,
   TruckWithSmartStatus,
   Broker,
 } from "./actions/fleet";
+
+export {
+  reportCheckpoint,
+  getCheckpointHistory,
+  getLoadTrack,
+} from "./actions/tracking";
+
+export {
+  createNotification,
+  getNotifications,
+  getUnreadCount,
+  markRead,
+  markAllRead,
+} from "./actions/notifications";

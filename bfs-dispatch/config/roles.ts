@@ -23,7 +23,6 @@ export const ROLE_PERMISSIONS: Record<RoleType, RoleConfig> = {
       "brokers",
       "traceability",
       "reports",
-      "sales",
     ],
     description: "Operaciones administrativas",
   },
@@ -39,7 +38,7 @@ export const ROLE_PERMISSIONS: Record<RoleType, RoleConfig> = {
   },
   sales: {
     label: "Ventas",
-    modules: ["dashboard", "brokers", "reports", "sales"],
+    modules: ["dashboard", "brokers", "reports"],
     description: "Gestión de ventas y brokers",
   },
 };
@@ -53,7 +52,6 @@ export const MODULE_ROUTE_MAP: Record<string, string> = {
   brokers: "/brokers",
   traceability: "/traceability",
   reports: "/reports",
-  sales: "/dashboard/sales",
   human_resources: "/dashboard/human-resources",
 };
 

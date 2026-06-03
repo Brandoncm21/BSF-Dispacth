@@ -7,7 +7,7 @@ export type Load = {
   load_data: string | null;
   weight_lbs: number | null;
   rate: number | null;
-  dispatch_fee: number | null;
+  dispatch_fee_pct: number | null;
   load_status: string | null;
   paid_status: string | null;
   factoring: boolean;
@@ -16,6 +16,7 @@ export type Load = {
   driver_id: number | null;
   route_id: number | null;
   cargo_type_id: number | null;
+  special_requirements_id: number | null;
   picked_up_at: string | null;
   delivered_at: string | null;
   carrier_name: string | null;
@@ -43,6 +44,7 @@ export type LoadForm = {
   status_id: number;
   picked_up_at: string;
   delivered_at: string;
+  confirmed_digital: boolean;
 };
 
 export type SelectOption = { id: number; label: string };
@@ -64,6 +66,7 @@ export const emptyForm: LoadForm = {
   status_id: 1,
   picked_up_at: "",
   delivered_at: "",
+  confirmed_digital: false,
 };
 
 export const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -77,14 +80,17 @@ export const loadSchema = z.object({
   route_id: z.coerce.number().int().positive("Ruta es requerida"),
   cargo_type_id: z.preprocess((val) => val === "" || val === null ? null : Number(val), z.number().int().positive().nullable().optional()),
   special_requirements_id: z.preprocess((val) => val === "" || val === null ? null : Number(val), z.number().int().positive().nullable().optional()),
-  rate: z.coerce.number().min(0, "Rate es requerido"),
+  rate: z.coerce.number().optional().nullable(),
   dispatch_fee_pct: z.coerce.number().optional().nullable(),
   factoring: z.boolean().default(false),
   load_status: z.string().default(LOAD_STATUS.PENDING),
   paid_status: z.string().default(PAID_STATUS.UNPAID),
   status_id: z.coerce.number().default(1),
-  picked_up_at: z.string().optional().or(z.literal("")),
-  delivered_at: z.string().optional().or(z.literal("")),
+  picked_up_at: z.string().min(1, "Fecha de recogida es requerida"),
+  delivered_at: z.string().min(1, "Fecha de entrega es requerida"),
+  confirmed_digital: z.boolean().refine(val => val === true, {
+    message: "Debes confirmar digitalmente para continuar",
+  }),
 });
 
 export const documentSchema = z.object({

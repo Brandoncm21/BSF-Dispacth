@@ -20,6 +20,7 @@ type TruckSearchResult = {
   operational_status: string;
   carrier_id: number;
   carrier_company_name: string;
+  capacity: string | null;
   plate_number: string | null;
   vin: string | null;
   truck_name: string | null;
@@ -27,6 +28,8 @@ type TruckSearchResult = {
   driver_id: number | null;
   driver_first_name: string | null;
   driver_last_name: string | null;
+  fuel_type: string | null;
+  fuel_cost_per_mile: number | null;
 };
 
 function mapTruckData(raw: TruckSearchResult): TruckWithSmartStatus {
@@ -48,7 +51,8 @@ function mapTruckData(raw: TruckSearchResult): TruckWithSmartStatus {
   return {
     truck_id: raw.truck_id,
     unit_number: raw.unit_number,
-    truck_type: raw.vehicle_type || "N/A",
+    vehicle_type: raw.vehicle_type || "N/A",
+    capacity: raw.capacity as string | null,
     operational_status: raw.operational_status,
     carrier_id: raw.carrier_id,
     carrier_name: raw.carrier_company_name || "N/A",
@@ -63,6 +67,8 @@ function mapTruckData(raw: TruckSearchResult): TruckWithSmartStatus {
     driver_id: raw.driver_id || null,
     driver_first_name: raw.driver_first_name || null,
     driver_last_name: raw.driver_last_name || null,
+    fuel_type: raw.fuel_type || null,
+    fuel_cost_per_mile: raw.fuel_cost_per_mile || null,
   };
 }
 
@@ -196,6 +202,7 @@ export default function TrucksPage() {
                   <th className="px-4 py-3 text-left text-sm font-medium text-zinc-500 dark:text-zinc-400">Truck Type</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-zinc-500 dark:text-zinc-400">Current Load</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-zinc-500 dark:text-zinc-400">Status</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-zinc-500 dark:text-zinc-400">Fuel</th>
                   <th className="px-4 py-3 text-right text-sm font-medium text-zinc-500 dark:text-zinc-400">Actions</th>
                 </tr>
               </thead>
@@ -211,7 +218,7 @@ export default function TrucksPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{truck.carrier_name}</td>
-                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{truck.truck_type}</td>
+                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{truck.vehicle_type}</td>
                     <td className="px-4 py-3">
                       {truck.current_load_number ? (
                         <span className="text-sm text-blue-600 dark:text-blue-400">{truck.current_load_number}</span>
@@ -221,6 +228,18 @@ export default function TrucksPage() {
                     </td>
                     <td className="px-4 py-3">
                       <TruckStatusBadge status={truck.smart_status} reason={truck.status_reason} />
+                    </td>
+                    <td className="px-4 py-3">
+                      {truck.fuel_type ? (
+                        <div>
+                          <span className="text-xs font-medium capitalize">{truck.fuel_type}</span>
+                          <span className="text-xs text-zinc-400 ml-1">
+                            ${truck.fuel_cost_per_mile?.toFixed(2)}/mi
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-zinc-400">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-1">
@@ -349,7 +368,7 @@ function TruckCard({
           </div>
           <div>
             <p className="text-zinc-500 text-xs">Tipo</p>
-            <p className="font-medium">{truck.truck_type}</p>
+            <p className="font-medium">{truck.vehicle_type}</p>
           </div>
         </div>
         <div>
@@ -360,6 +379,20 @@ function TruckCard({
           <div>
             <p className="text-zinc-500 text-xs">Chofer Asignado</p>
             <p className="font-medium">{truck.driver_first_name} {truck.driver_last_name}</p>
+          </div>
+        )}
+        {truck.fuel_type && (
+          <div className="border-t border-zinc-200 dark:border-zinc-700 pt-2 mt-1">
+            <div className="grid grid-cols-2 gap-x-4">
+              <div>
+                <p className="text-zinc-500 text-xs">Combustible</p>
+                <p className="font-medium capitalize">{truck.fuel_type}</p>
+              </div>
+              <div>
+                <p className="text-zinc-500 text-xs">Costo por Milla</p>
+                <p className="font-medium">${truck.fuel_cost_per_mile?.toFixed(2)}/mi</p>
+              </div>
+            </div>
           </div>
         )}
       </div>

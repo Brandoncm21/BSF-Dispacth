@@ -31,6 +31,7 @@ export function BrokerFormSheet({ open, onOpenChange, broker, onSuccess }: Broke
     phone_number: "",
     mc_number: "",
     usdot_number: "",
+    status_id: 1,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -46,6 +47,7 @@ export function BrokerFormSheet({ open, onOpenChange, broker, onSuccess }: Broke
         phone_number: broker.phone_number || "",
         mc_number: broker.mc_number || "",
         usdot_number: broker.usdot_number || "",
+        status_id: broker.status_id || 1,
       });
     } else {
       setForm({
@@ -55,6 +57,7 @@ export function BrokerFormSheet({ open, onOpenChange, broker, onSuccess }: Broke
         phone_number: "",
         mc_number: "",
         usdot_number: "",
+        status_id: 1,
       });
     }
     setErrors({});
@@ -83,6 +86,7 @@ export function BrokerFormSheet({ open, onOpenChange, broker, onSuccess }: Broke
           phone_number: form.phone_number || undefined,
           mc_number: form.mc_number || undefined,
           usdot_number: form.usdot_number || undefined,
+          status_id: form.status_id,
         });
       } else {
         await createBroker({
@@ -92,6 +96,7 @@ export function BrokerFormSheet({ open, onOpenChange, broker, onSuccess }: Broke
           phone_number: form.phone_number || undefined,
           mc_number: form.mc_number || undefined,
           usdot_number: form.usdot_number || undefined,
+          status_id: form.status_id,
         });
       }
       onOpenChange(false);
@@ -190,6 +195,20 @@ export function BrokerFormSheet({ open, onOpenChange, broker, onSuccess }: Broke
               onChange={(e) => setForm({ ...form, usdot_number: e.target.value })}
               placeholder="ej: 1234567"
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="status_id">Estado</Label>
+            <select
+              id="status_id"
+              value={form.status_id}
+              onChange={(e) => setForm({ ...form, status_id: Number(e.target.value) })}
+              className="flex w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-transparent px-3 py-2 text-sm"
+            >
+              <option value={1}>Activo</option>
+              <option value={3}>Pendiente</option>
+              <option value={2}>Inactivo</option>
+            </select>
           </div>
 
           <div className="flex justify-end gap-3 pt-4">

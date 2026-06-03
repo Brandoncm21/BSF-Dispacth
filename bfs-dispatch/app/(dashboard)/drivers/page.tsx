@@ -177,6 +177,7 @@ export default function DriversPage() {
       cdl_number: form.cdl_number || undefined,
       carrier_id: form.carrier_id,
       has_twic_card: form.has_twic_card,
+      status_id: form.status_id,
     };
 
     const result = driverSchema.safeParse(dataToSubmit);
@@ -441,6 +442,19 @@ export default function DriversPage() {
                 className="h-4 w-4"
               />
               <Label htmlFor="has_twic_card">Posee Tarjeta TWIC</Label>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="status_id">Estado</Label>
+              <select
+                id="status_id"
+                value={form.status_id}
+                onChange={(e) => setForm({ ...form, status_id: Number(e.target.value) })}
+                className="flex w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-transparent px-3 py-2 text-sm"
+              >
+                <option value={1}>Activo</option>
+                <option value={3}>Pendiente</option>
+                <option value={2}>Inactivo</option>
+              </select>
             </div>
           </div>
 
