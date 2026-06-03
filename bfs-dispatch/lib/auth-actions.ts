@@ -1,17 +1,10 @@
 "use server";
 
-import { createClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 export async function login(formData: FormData) {
-  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      flowType: "pkce",
-    },
-  });
+  const supabase = await createSupabaseServerClient();
 
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
@@ -28,35 +21,15 @@ export async function login(formData: FormData) {
   redirect("/dashboard");
 }
 
-export async function signup(formData: FormData) {
-  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      flowType: "pkce",
-    },
-  });
-
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
-
-  const { error } = await supabase.auth.signUp({
-    email,
-    password,
-  });
-
-  if (error) {
-    return { error: error.message };
-  }
-
-  redirect("/login?registered=true");
-}
-
 export async function logout() {
-  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      flowType: "pkce",
-    },
-  });
-
+  const supabase = await createSupabaseServerClient();
   await supabase.auth.signOut();
   redirect("/login");
+}
+
+export async function getUserRole() {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("get_user_role_type");
+  if (error || !data) return null;
+  return data;
 }
