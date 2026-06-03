@@ -546,6 +546,7 @@ ALTER TABLE carriers ADD COLUMN IF NOT EXISTS factoring BOOLEAN DEFAULT FALSE;
 ALTER TABLE carriers ADD COLUMN IF NOT EXISTS mc_number VARCHAR(50);
 ALTER TABLE drivers ADD COLUMN IF NOT EXISTS cdl_number VARCHAR(50);
 ALTER TABLE loads ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE loads ADD COLUMN IF NOT EXISTS broker_id INTEGER REFERENCES brokers(broker_id);
 
 ALTER TABLE routes
     ADD COLUMN IF NOT EXISTS origin_location_id INTEGER REFERENCES locations(location_id),
@@ -608,6 +609,76 @@ CREATE TABLE IF NOT EXISTS driver_checkpoints (
 CREATE INDEX IF NOT EXISTS idx_locations_mapbox_place_id ON locations(mapbox_place_id);
 CREATE INDEX IF NOT EXISTS idx_driver_checkpoints_load_id ON driver_checkpoints(load_id);
 CREATE INDEX IF NOT EXISTS idx_driver_checkpoints_recorded_at ON driver_checkpoints(recorded_at DESC);
+
+-- ============================================================
+-- TABLAS DE SALES FLOW (auto-creation cuando load → booked)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS earnings (
+    earnings_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    employee_id INTEGER NOT NULL REFERENCES employees(employee_id),
+    load_id INTEGER NOT NULL REFERENCES loads(load_id),
+    sales_id INTEGER REFERENCES sales(sales_id),
+    sale_date DATE NOT NULL,
+    earnings_amount NUMERIC(12,2) NOT NULL,
+    profit_type VARCHAR(20) DEFAULT 'dispatch_fee'
+        CHECK (profit_type IN ('dispatch_fee', 'delivery_complete', 'payment_received')),
+    earnings_status VARCHAR(20) DEFAULT 'provisional'
+        CHECK (earnings_status IN ('provisional', 'confirmed', 'finalized')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    created_by INTEGER REFERENCES employees(employee_id),
+    status_id INTEGER DEFAULT 1 REFERENCES record_status(status_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_earnings_employee_id ON earnings(employee_id);
+CREATE INDEX IF NOT EXISTS idx_earnings_load_id ON earnings(load_id);
+CREATE INDEX IF NOT EXISTS idx_earnings_status ON earnings(earnings_status);
+
+CREATE OR REPLACE FUNCTION create_sale_on_load_booked()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_sales_id INTEGER;
+    v_profit NUMERIC;
+    v_rate NUMERIC;
+    v_dispatch_fee NUMERIC;
+BEGIN
+    IF NEW.load_status = 'booked' AND OLD.load_status != 'booked' THEN
+        v_rate := COALESCE(NEW.rate, 0);
+        v_dispatch_fee := COALESCE(
+            NEW.dispatch_fee,
+            COALESCE(NEW.dispatch_fee_pct, 0) * v_rate / 100,
+            0
+        );
+        v_profit := v_rate - v_dispatch_fee;
+        
+        INSERT INTO sales (total_amount, total_cost, profit_pct, total_profit,
+                           sale_date, broker_id, employee_id, status_id)
+        VALUES (v_rate, v_dispatch_fee,
+                CASE WHEN v_rate > 0 THEN ROUND((v_profit / v_rate * 100)::NUMERIC, 2) ELSE 0 END,
+                v_profit, NOW()::DATE, NEW.broker_id, NEW.dispatcher_id, 1)
+        RETURNING sales_id INTO v_sales_id;
+        
+        INSERT INTO sales_details (sales_id, load_id, quantity, unit_price,
+                                   total_amount, shipment_status, status_id)
+        VALUES (v_sales_id, NEW.load_id, 1, v_rate, v_rate, 'booked', 1);
+        
+        IF NEW.dispatcher_id IS NOT NULL THEN
+            INSERT INTO earnings (employee_id, load_id, sales_id, sale_date,
+                                  earnings_amount, profit_type, earnings_status, created_by)
+            VALUES (NEW.dispatcher_id, NEW.load_id, v_sales_id, NOW()::DATE,
+                    v_profit, 'dispatch_fee', 'provisional', NEW.dispatcher_id);
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_sales_on_load_booked ON loads;
+CREATE TRIGGER trigger_sales_on_load_booked
+    AFTER UPDATE ON loads
+    FOR EACH ROW
+    EXECUTE FUNCTION create_sale_on_load_booked();
 
 -- Secuencia y trigger para load_number atómico
 CREATE SEQUENCE IF NOT EXISTS loads_seq START 1;

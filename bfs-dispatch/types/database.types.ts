@@ -271,6 +271,7 @@ export type Database = {
           cargo_type_id: number | null;
           special_requirements_id: number | null;
           created_at: string | null;
+          broker_id: number | null;
         };
         Insert: {
           load_id?: number;
@@ -295,6 +296,7 @@ export type Database = {
           cargo_type_id?: number | null;
           special_requirements_id?: number | null;
           created_at?: string | null;
+          broker_id?: number | null;
         };
         Update: {
           load_id?: number;
@@ -400,6 +402,51 @@ export type Database = {
           status_at_checkpoint?: string | null;
           notes?: string | null;
           created_by?: number | null;
+        };
+      };
+
+      earnings: {
+        Row: {
+          earnings_id: number;
+          employee_id: number;
+          load_id: number;
+          sales_id: number | null;
+          sale_date: string;
+          earnings_amount: number;
+          profit_type: string | null;
+          earnings_status: string | null;
+          created_at: string | null;
+          updated_at: string | null;
+          created_by: number | null;
+          status_id: number | null;
+        };
+        Insert: {
+          earnings_id?: number;
+          employee_id: number;
+          load_id: number;
+          sales_id?: number | null;
+          sale_date: string;
+          earnings_amount: number;
+          profit_type?: string | null;
+          earnings_status?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+          created_by?: number | null;
+          status_id?: number | null;
+        };
+        Update: {
+          earnings_id?: number;
+          employee_id?: number;
+          load_id?: number;
+          sales_id?: number | null;
+          sale_date?: string;
+          earnings_amount?: number;
+          profit_type?: string | null;
+          earnings_status?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+          created_by?: number | null;
+          status_id?: number | null;
         };
       };
 
