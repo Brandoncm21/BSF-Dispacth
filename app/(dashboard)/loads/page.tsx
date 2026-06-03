@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -14,12 +15,18 @@ import { LoadsTable } from "@/components/loads-table";
 import { LoadFormDialog } from "@/components/load-form-dialog";
 import { LoadDocsDialog } from "@/components/load-docs-dialog";
 import { CheckpointForm } from "@/components/checkpoint-form";
+import { TabBar } from "@/components/tab-bar";
 import { createLoad, updateLoad, uploadLoadDocument, reportCheckpoint } from "@/lib/actions";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { parseSupabaseError } from "@/lib/errors";
 import { LOAD_STATUS, LOAD_STATUS_LABELS } from "@/lib/constants";
 import { useLoads } from "@/hooks/use-loads";
 import type { Load, LoadFormSubmitData } from "@/types/load";
+
+const TrackingMapPinsWithNoSSR = dynamic(
+  () => import("@/components/tracking-map-pins").then((mod) => ({ default: mod.TrackingMapPins })),
+  { ssr: false }
+);
 
 export default function LoadsPage() {
   const {
@@ -38,6 +45,7 @@ export default function LoadsPage() {
   const [checkpointLoad, setCheckpointLoad] = useState<Load | null>(null);
   const [checkpointSending, setCheckpointSending] = useState(false);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [activeTab, setActiveTab] = useState<string>("lista");
   const supabase = useRef(createSupabaseBrowserClient());
 
   const showToast = useCallback((type: "success" | "error", message: string) => {
@@ -125,6 +133,11 @@ export default function LoadsPage() {
 
   function openCheckpoint(load: Load) { setCheckpointLoad(load); }
 
+  function openCheckpointById(loadId: number) {
+    const load = loads.find((l) => l.load_id === loadId);
+    if (load) setCheckpointLoad(load);
+  }
+
   return (
     <div className="p-8">
       {/* Toast notification */}
@@ -189,25 +202,38 @@ export default function LoadsPage() {
         </select>
       </div>
 
-      {loading ? (
-        <TableSkeleton rows={16} columns={12} />
+      <TabBar
+        tabs={[
+          { id: "lista", label: "Lista" },
+          { id: "mapa", label: "Mapa" },
+        ]}
+        activeTab={activeTab}
+        onChange={setActiveTab}
+      />
+
+      {activeTab === "lista" ? (
+        loading ? (
+          <TableSkeleton rows={16} columns={12} />
+        ) : (
+          <>
+            <LoadsTable
+              loads={loads}
+              onEdit={openEdit}
+              onDelete={handleDelete}
+              onViewDocs={openDocs}
+              onStatusChange={updateStatus}
+              onCheckpoint={openCheckpoint}
+            />
+            <PaginationControls
+              currentPage={page}
+              totalItems={totalItems}
+              pageSize={16}
+              onPageChange={setPage}
+            />
+          </>
+        )
       ) : (
-        <>
-          <LoadsTable
-            loads={loads}
-            onEdit={openEdit}
-            onDelete={handleDelete}
-            onViewDocs={openDocs}
-            onStatusChange={updateStatus}
-            onCheckpoint={openCheckpoint}
-          />
-          <PaginationControls
-            currentPage={page}
-            totalItems={totalItems}
-            pageSize={16}
-            onPageChange={setPage}
-          />
-        </>
+        <TrackingMapPinsWithNoSSR height="450px" onReportCheckpoint={openCheckpointById} />
       )}
 
       <LoadFormDialog
