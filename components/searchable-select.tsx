@@ -37,7 +37,7 @@ export function SearchableSelect({
   const inputRef = useRef<HTMLInputElement>(null!);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  const selectedLabel = selectedLabel || results.find((r) => r.id === value)?.label || "";
+  const selectedLabel = initialLabel || results.find((r) => r.id === value)?.label || "";
 
   const performSearch = useCallback(async (q: string) => {
     if (!q.trim()) {
