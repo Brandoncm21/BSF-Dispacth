@@ -266,8 +266,6 @@ export type Database = {
           truck_id: number | null;
           driver_id: number | null;
           route_id: number | null;
-          origin_address_id: number | null;
-          destination_address_id: number | null;
           dispatcher_id: number | null;
           status_id: number | null;
           cargo_type_id: number | null;
@@ -292,8 +290,6 @@ export type Database = {
           truck_id?: number | null;
           driver_id?: number | null;
           route_id?: number | null;
-          origin_address_id?: number | null;
-          destination_address_id?: number | null;
           dispatcher_id?: number | null;
           status_id?: number | null;
           cargo_type_id?: number | null;
@@ -318,12 +314,55 @@ export type Database = {
           truck_id?: number | null;
           driver_id?: number | null;
           route_id?: number | null;
-          origin_address_id?: number | null;
-          destination_address_id?: number | null;
           dispatcher_id?: number | null;
           status_id?: number | null;
           cargo_type_id?: number | null;
           special_requirements_id?: number | null;
+          created_at?: string | null;
+        };
+      };
+
+      locations: {
+        Row: {
+          location_id: number;
+          formatted_address: string;
+          street: string | null;
+          city: string | null;
+          state: string | null;
+          zip: string | null;
+          lat: number | null;
+          lng: number | null;
+          mapbox_place_id: string | null;
+          source: string | null;
+          status_id: number | null;
+          created_at: string | null;
+        };
+        Insert: {
+          location_id?: number;
+          formatted_address: string;
+          street?: string | null;
+          city?: string | null;
+          state?: string | null;
+          zip?: string | null;
+          lat?: number | null;
+          lng?: number | null;
+          mapbox_place_id?: string | null;
+          source?: string | null;
+          status_id?: number | null;
+          created_at?: string | null;
+        };
+        Update: {
+          location_id?: number;
+          formatted_address?: string;
+          street?: string | null;
+          city?: string | null;
+          state?: string | null;
+          zip?: string | null;
+          lat?: number | null;
+          lng?: number | null;
+          mapbox_place_id?: string | null;
+          source?: string | null;
+          status_id?: number | null;
           created_at?: string | null;
         };
       };
@@ -409,24 +448,24 @@ export type Database = {
       routes: {
         Row: {
           route_id: number;
-          origin_address_id: number | null;
-          destination_address_id: number | null;
+          origin_location_id: number | null;
+          destination_location_id: number | null;
           estimated_time: string | null;
           miles: number | null;
           status_id: number | null;
         };
         Insert: {
           route_id?: number;
-          origin_address_id?: number | null;
-          destination_address_id?: number | null;
+          origin_location_id?: number | null;
+          destination_location_id?: number | null;
           estimated_time?: string | null;
           miles?: number | null;
           status_id?: number | null;
         };
         Update: {
           route_id?: number;
-          origin_address_id?: number | null;
-          destination_address_id?: number | null;
+          origin_location_id?: number | null;
+          destination_location_id?: number | null;
           estimated_time?: string | null;
           miles?: number | null;
           status_id?: number | null;

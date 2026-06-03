@@ -36,19 +36,25 @@ export {
 
 export {
   getRoutesWithDetails,
-  getOrCreateAddress,
   getOrCreateRoute,
-  getOrCreateCity,
-  searchStreets,
-  getOrCreateStreet,
   createRoute,
   calculateRouteMiles,
 } from "./actions/routes";
 
 export type {
   RouteWithDetails,
-  AddressWithDetails,
 } from "./actions/routes";
+
+export {
+  searchLocations,
+  getLocationById,
+  getOrCreateLocation,
+} from "./actions/locations";
+
+export type {
+  Location,
+  MapboxPlaceData,
+} from "./actions/locations";
 
 export {
   uploadLoadDocument,

@@ -265,6 +265,32 @@ export const LoadForm = forwardRef<LoadFormHandle, LoadFormProps>(function LoadF
         </div>
       )}
 
+      {routeMiles && form.rate && parseFloat(form.rate) > 0 && (
+        <div className="col-span-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+          <p className="text-xs font-medium text-blue-700 dark:text-blue-400 mb-1">💰 Rate por Milla</p>
+          <div className="flex items-center justify-between text-sm">
+            <div>
+              <span className="text-blue-600 dark:text-blue-300">Rate</span>
+              <p className="font-semibold text-blue-900 dark:text-blue-100">
+                ${parseFloat(form.rate).toLocaleString("es-CR", { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+            <div className="text-blue-400">÷</div>
+            <div>
+              <span className="text-blue-600 dark:text-blue-300">Millas</span>
+              <p className="font-semibold text-blue-900 dark:text-blue-100">{routeMiles} mi</p>
+            </div>
+            <div className="text-blue-400">=</div>
+            <div>
+              <span className="text-blue-600 dark:text-blue-300">Rate/milla</span>
+              <p className="font-semibold text-blue-900 dark:text-blue-100">
+                ${(parseFloat(form.rate) / routeMiles).toFixed(2)}/mi
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="col-span-2 grid grid-cols-2 gap-3">
         <div className="space-y-1">
           <Label htmlFor="picked_up_at" className="text-xs">Pickup</Label>

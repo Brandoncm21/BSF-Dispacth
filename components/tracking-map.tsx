@@ -56,6 +56,7 @@ export function TrackingMap({
 }: Props) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
+  const markersRef = useRef<mapboxgl.Marker[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -92,6 +93,18 @@ export function TrackingMap({
     if (!map.current || !loaded || !truckMarkers) return;
     if (!MAPBOX_TOKEN) return;
 
+    // Clean up previous checkpoint markers if any
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current = [];
+
+    // Also clean up any existing route source/layer
+    if (map.current.getLayer("checkpoint-route-line")) {
+      map.current.removeLayer("checkpoint-route-line");
+    }
+    if (map.current.getSource("checkpoint-route")) {
+      map.current.removeSource("checkpoint-route");
+    }
+
     truckMarkers.forEach((t) => {
       const hoursAgo = (Date.now() - new Date(t.last_reported).getTime()) / 3600000;
       const el = document.createElement("div");
@@ -108,11 +121,20 @@ export function TrackingMap({
           `)
         : undefined;
 
-      new mapboxgl.Marker({ element: el })
+      const marker = new mapboxgl.Marker({ element: el })
         .setLngLat([t.lng, t.lat])
         .setPopup(popup)
         .addTo(map.current!);
+
+      markersRef.current.push(marker);
     });
+
+    // Fit bounds for truck markers
+    if (truckMarkers.length > 0) {
+      const bounds = new mapboxgl.LngLatBounds();
+      truckMarkers.forEach((t) => bounds.extend([t.lng, t.lat]));
+      map.current.fitBounds(bounds, { padding: 60, maxZoom: 10 });
+    }
   }, [truckMarkers, loaded, showPopup]);
 
   // Add checkpoint path for customer portal
@@ -120,34 +142,50 @@ export function TrackingMap({
     if (!map.current || !loaded || !checkpoints || checkpoints.length === 0) return;
     if (!MAPBOX_TOKEN) return;
 
-    const coords = checkpoints
-      .sort((a, b) => new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime())
-      .map((c) => [c.lng, c.lat] as [number, number]);
+    // Clean up previous checkpoint markers
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current = [];
 
-    if (coords.length < 2) return;
+    // Clean up previous source/layer if they exist
+    if (map.current.getLayer("checkpoint-route-line")) {
+      map.current.removeLayer("checkpoint-route-line");
+    }
+    if (map.current.getSource("checkpoint-route")) {
+      map.current.removeSource("checkpoint-route");
+    }
 
-    map.current.addSource("checkpoint-route", {
-      type: "geojson",
-      data: {
-        type: "Feature",
-        properties: {},
-        geometry: { type: "LineString", coordinates: coords },
-      },
-    });
+    // Sort checkpoints chronologically
+    const sorted = [...checkpoints].sort(
+      (a, b) => new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime()
+    );
 
-    map.current.addLayer({
-      id: "checkpoint-route-line",
-      type: "line",
-      source: "checkpoint-route",
-      paint: {
-        "line-color": "#3b82f6",
-        "line-width": 3,
-        "line-opacity": 0.6,
-      },
-    });
+    const coords = sorted.map((c) => [c.lng, c.lat] as [number, number]);
 
-    // Add checkpoint markers
-    checkpoints.forEach((cp) => {
+    // Draw route line if 2+ points
+    if (coords.length >= 2) {
+      map.current.addSource("checkpoint-route", {
+        type: "geojson",
+        data: {
+          type: "Feature",
+          properties: {},
+          geometry: { type: "LineString", coordinates: coords },
+        },
+      });
+
+      map.current.addLayer({
+        id: "checkpoint-route-line",
+        type: "line",
+        source: "checkpoint-route",
+        paint: {
+          "line-color": "#3b82f6",
+          "line-width": 3,
+          "line-opacity": 0.6,
+        },
+      });
+    }
+
+    // Always draw checkpoint markers (even with 1 checkpoint)
+    sorted.forEach((cp) => {
       const el = document.createElement("div");
       el.className = "w-2.5 h-2.5 rounded-full border-2 border-white";
       el.style.backgroundColor = "#3b82f6";
@@ -160,11 +198,18 @@ export function TrackingMap({
         </div>`
       );
 
-      new mapboxgl.Marker({ element: el })
+      const marker = new mapboxgl.Marker({ element: el })
         .setLngLat([cp.lng, cp.lat])
         .setPopup(popup)
         .addTo(map.current!);
+
+      markersRef.current.push(marker);
     });
+
+    // Fit map to checkpoint bounds
+    const bounds = new mapboxgl.LngLatBounds();
+    sorted.forEach((cp) => bounds.extend([cp.lng, cp.lat]));
+    map.current.fitBounds(bounds, { padding: 60, maxZoom: 12 });
   }, [checkpoints, loaded]);
 
   // Add origin/destination markers for customer portal
