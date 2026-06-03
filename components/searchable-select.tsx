@@ -33,11 +33,16 @@ export function SearchableSelect({
   const [results, setResults] = useState<Option[]>([]);
   const [loading, setLoading] = useState(false);
   const [highlightIdx, setHighlightIdx] = useState(-1);
+  const [displayLabel, setDisplayLabel] = useState(initialLabel || "");
   const wrapperRef = useRef<HTMLDivElement>(null!);
   const inputRef = useRef<HTMLInputElement>(null!);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  const selectedLabel = initialLabel || results.find((r) => r.id === value)?.label || "";
+  useEffect(() => {
+    if (initialLabel) setDisplayLabel(initialLabel);
+  }, [initialLabel]);
+
+  const selectedLabel = displayLabel || results.find((r) => r.id === value)?.label || "";
 
   const performSearch = useCallback(async (q: string) => {
     if (!q.trim()) {
@@ -86,6 +91,7 @@ export function SearchableSelect({
 
   function handleSelect(option: Option) {
     onChange(option.id);
+    setDisplayLabel(option.label);
     setOpen(false);
     setQuery("");
     setResults([]);
@@ -93,6 +99,7 @@ export function SearchableSelect({
 
   function handleClear() {
     onChange(null);
+    setDisplayLabel("");
     setQuery("");
     setResults([]);
   }
