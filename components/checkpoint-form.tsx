@@ -67,7 +67,7 @@ export function CheckpointForm({ loadId, driverId, currentStatus, onSubmit }: Pr
     <div className="space-y-4 p-4 border border-zinc-200 dark:border-zinc-800 rounded-lg">
       <h3 className="font-semibold text-sm">Reportar Posición</h3>
 
-      <div className="flex items-end gap-2">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-2">
         <div className="flex-1">
           <label className="text-xs text-zinc-500 block mb-1">Latitud</label>
           <input
@@ -94,6 +94,7 @@ export function CheckpointForm({ loadId, driverId, currentStatus, onSubmit }: Pr
           size="sm"
           onClick={detectPosition}
           disabled={geoLoading}
+          className="w-full sm:w-auto"
         >
           <MapPin className="h-4 w-4" />
           {geoLoading ? "..." : "Detectar"}

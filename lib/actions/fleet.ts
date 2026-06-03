@@ -533,7 +533,10 @@ export async function searchTrucks(
     driver_last_name: r.driver_last_name,
     carrier_company_name: r.carrier_company_name,
     status_id: r.status_id,
-    record_status: r.status_name ? { status_name: r.status_name as string } : null,
+    status_name: r.status_name,
+    total_count: r.total_count,
+    fuel_type: r.fuel_type,
+    fuel_cost_per_mile: r.fuel_cost_per_mile,
   }));
   return { data: mapped, count: total };
 }

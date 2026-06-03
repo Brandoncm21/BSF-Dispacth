@@ -63,7 +63,7 @@ export default async function TrackPage({ params }: Props) {
     : "";
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
+    <div className="max-w-full sm:max-w-2xl mx-auto px-2 sm:px-4 py-4 sm:py-8">
       {/* BFS Solutions branding */}
       <div className="flex items-center gap-2 mb-6">
         <Truck className="h-5 w-5 text-zinc-900" />

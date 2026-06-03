@@ -103,7 +103,7 @@ export function NotificationBell({ recipientType, recipientId }: Props) {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-lg z-50">
+        <div className="absolute right-0 mt-2 w-80 max-w-[90vw] bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-lg z-50">
           <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-200 dark:border-zinc-800">
             <span className="text-sm font-semibold">Notificaciones</span>
             {unread > 0 && (
