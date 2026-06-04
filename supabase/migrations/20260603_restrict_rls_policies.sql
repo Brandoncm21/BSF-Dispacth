@@ -153,8 +153,22 @@ CREATE POLICY "loads_admin_all" ON loads
   FOR ALL
   USING (get_user_role_type() = 'admin');
 
-CREATE POLICY "loads_dispatcher_rw" ON loads
-  FOR SELECT, UPDATE, INSERT
+CREATE POLICY "loads_dispatcher_select" ON loads
+  FOR SELECT
+  USING (
+    get_user_role_type() = 'dispatcher'
+    AND dispatcher_id = get_current_employee_id()
+  );
+
+CREATE POLICY "loads_dispatcher_insert" ON loads
+  FOR INSERT
+  WITH CHECK (
+    get_user_role_type() = 'dispatcher'
+    AND dispatcher_id = get_current_employee_id()
+  );
+
+CREATE POLICY "loads_dispatcher_update" ON loads
+  FOR UPDATE
   USING (
     get_user_role_type() = 'dispatcher'
     AND dispatcher_id = get_current_employee_id()
@@ -203,8 +217,12 @@ CREATE POLICY "carriers_write_create" ON carriers
     AND get_user_role_type() IN ('dispatcher', 'admin')
   );
 
-CREATE POLICY "carriers_admin_update_delete" ON carriers
-  FOR UPDATE, DELETE
+CREATE POLICY "carriers_admin_update" ON carriers
+  FOR UPDATE
+  USING (get_user_role_type() = 'admin');
+
+CREATE POLICY "carriers_admin_delete" ON carriers
+  FOR DELETE
   USING (get_user_role_type() = 'admin');
 
 
@@ -223,8 +241,12 @@ CREATE POLICY "brokers_write_create" ON brokers
     AND get_user_role_type() IN ('dispatcher', 'admin')
   );
 
-CREATE POLICY "brokers_admin_update_delete" ON brokers
-  FOR UPDATE, DELETE
+CREATE POLICY "brokers_admin_update" ON brokers
+  FOR UPDATE
+  USING (get_user_role_type() = 'admin');
+
+CREATE POLICY "brokers_admin_delete" ON brokers
+  FOR DELETE
   USING (get_user_role_type() = 'admin');
 
 
@@ -281,14 +303,22 @@ DECLARE
   ];
 BEGIN
   FOREACH tbl IN ARRAY catalog_tables LOOP
-    EXECUTE format(
-      'CREATE POLICY "%I_select_all" ON %I FOR SELECT USING (auth.role() = ''authenticated'');',
-      tbl, tbl
-    );
-    EXECUTE format(
-      'CREATE POLICY "%I_write_admin" ON %I FOR ALL USING (get_user_role_type() = ''admin'');',
-      tbl, tbl
-    );
+    IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = tbl) THEN
+      EXECUTE format(
+        'DROP POLICY IF EXISTS "%I_select_all" ON %I', tbl, tbl
+      );
+      EXECUTE format(
+        'DROP POLICY IF EXISTS "%I_write_admin" ON %I', tbl, tbl
+      );
+      EXECUTE format(
+        'CREATE POLICY "%I_select_all" ON %I FOR SELECT USING (auth.role() = ''authenticated'');',
+        tbl, tbl
+      );
+      EXECUTE format(
+        'CREATE POLICY "%I_write_admin" ON %I FOR ALL USING (get_user_role_type() = ''admin'');',
+        tbl, tbl
+      );
+    END IF;
   END LOOP;
 END $$;
 
@@ -297,9 +327,22 @@ END $$;
 -- 13. load_status_history
 -- ============================================================
 
-CREATE POLICY "load_status_history_rw" ON load_status_history
-  FOR SELECT, INSERT
+CREATE POLICY "load_status_history_select" ON load_status_history
+  FOR SELECT
   USING (
+    EXISTS (
+      SELECT 1 FROM loads
+      WHERE loads.load_id = load_status_history.load_id
+      AND (
+        loads.dispatcher_id = get_current_employee_id()
+        OR get_user_role_type() IN ('admin', 'back_office', 'sales', 'logistics')
+      )
+    )
+  );
+
+CREATE POLICY "load_status_history_insert" ON load_status_history
+  FOR INSERT
+  WITH CHECK (
     EXISTS (
       SELECT 1 FROM loads
       WHERE loads.load_id = load_status_history.load_id
@@ -315,8 +358,34 @@ CREATE POLICY "load_status_history_rw" ON load_status_history
 -- 14. load_documents
 -- ============================================================
 
-CREATE POLICY "load_documents_rw" ON load_documents
-  FOR SELECT, INSERT, DELETE
+CREATE POLICY "load_documents_select" ON load_documents
+  FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM loads
+      WHERE loads.load_id = load_documents.load_id
+      AND (
+        loads.dispatcher_id = get_current_employee_id()
+        OR get_user_role_type() IN ('admin', 'back_office', 'sales', 'logistics')
+      )
+    )
+  );
+
+CREATE POLICY "load_documents_insert" ON load_documents
+  FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM loads
+      WHERE loads.load_id = load_documents.load_id
+      AND (
+        loads.dispatcher_id = get_current_employee_id()
+        OR get_user_role_type() IN ('admin', 'back_office', 'sales', 'logistics')
+      )
+    )
+  );
+
+CREATE POLICY "load_documents_delete" ON load_documents
+  FOR DELETE
   USING (
     EXISTS (
       SELECT 1 FROM loads
@@ -335,10 +404,14 @@ CREATE POLICY "load_documents_rw" ON load_documents
 
 CREATE POLICY "locations_read" ON locations
   FOR SELECT
+  USING (auth.role() = 'authenticated');
+
+CREATE POLICY "driver_checkpoints_select" ON driver_checkpoints
+  FOR SELECT
   USING (
     EXISTS (
       SELECT 1 FROM loads
-      WHERE loads.load_id = locations.load_id
+      WHERE loads.load_id = driver_checkpoints.load_id
       AND (
         loads.dispatcher_id = get_current_employee_id()
         OR get_user_role_type() IN ('admin', 'back_office', 'logistics')
@@ -346,9 +419,9 @@ CREATE POLICY "locations_read" ON locations
     )
   );
 
-CREATE POLICY "driver_checkpoints_rw" ON driver_checkpoints
-  FOR SELECT, INSERT
-  USING (
+CREATE POLICY "driver_checkpoints_insert" ON driver_checkpoints
+  FOR INSERT
+  WITH CHECK (
     EXISTS (
       SELECT 1 FROM loads
       WHERE loads.load_id = driver_checkpoints.load_id
